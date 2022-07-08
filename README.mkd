@@ -1,0 +1,124 @@
+"Streamable library"
+====================
+
+The Streamable library contains a signature for types supporting
+incremental serialization. It acts as the "runtime library" for
+[`ppx_streamable`](https://docpub/JD/p/ppx-streamable/cbb93649-c7e7-3075-a9ad-cd7a9ae1eabd),
+which may be easier to use than directly invoking the functors exposed
+by this library.
+
+This is useful for types that need to be serializable but may be too large to
+serialize in a single async cycle.
+
+Signature
+=========
+The core of the Streamable is the signature of incrementally
+serializable types, found in the `Module_type` module.
+
+At a high-level, the signature includes
+
+* a type `t`, that you want to serialize
+* a type `part`, which is `bin_io`-able
+* a function `t -> part Sequence.t`
+* a set of functions/types for incrementally putting together a sequence of
+  `part`s back into the original `t`
+
+It is expected that `t`s round-trip through this process; that is, turning a
+value into parts and then putting them back together should give an equal value.
+
+More in-depth documentation can be found alongside the type signature
+definition.
+
+Functors
+========
+The goal of the functors are to avoid the need to manually fulfill the
+streamable interface. In most cases they should be sufficient. The functors all
+fulfill the round-trip identity law, as long as their arguments do the same.
+
+All of the functors are available in `Stable` forms.
+
+Of_atomic
+---------
+The simplest provided functor is `Of_atomic`, which takes a `bin_io`-able type and
+returns the streamable signature on the same type. This is done in the trivial
+way, meaning that no benefit is gained in switching from `bin_io` to streamable
+if the streamable interface is satisfied with `Of_atomic`.
+
+Of_streamable
+-------------
+The `Of_streamable` functor takes a streamable type, a non-streamable analagous
+type, and conversion functions between the two, and returns a streamable
+instance of the latter type.
+
+This is most commonly used to make a record streamable, by going through one of
+the `Of_tupleN` functors:
+
+```
+type t = {x : int; y : string}
+
+include
+  Streamable.Remove_t
+    (Streamable.Of_streamable
+      (Streamable.Of_tuple2
+        (Streamable.Of_atomic (Int))
+        (Streamable.Of_atomic (String)))
+      (struct
+        type nonrec t = t
+        let to_streamable {x; y} =
+          (* *)           (x, y)
+        let of_streamable (x, y) =
+          (* *)           {x; y}
+      end))
+```
+
+Or, similarly, to make a variant streamable by going through one of the
+`Of_variantN` functors.
+
+Remove_t
+----------
+The `Remove_t` functor in the previous example is a helper that just
+removes the `type t` from the returned module, since there is already
+a `type t` in scope.  It's often useful.
+
+For container types
+-------------------
+Most of the remaining functors are used to lift one or more streamable types
+into a more complex streamable type by applying some type constructor. For
+example, a `string list` could be made streamable in the following way:
+
+```
+Streamable.Of_list (Streamable.Of_atomic (String))
+```
+
+Almost all of the module signatures encountered in these functors are just
+`Streamable.S` with various types `t`. The exceptions are the module for the key
+type in `Of_map` and the module for the type in `Of_set`. Both of these only
+expect the module signature `Stable` (the module for the _key_, not the
+corresponding map/set); that is, they must be `bin_io`-able, and will be streamed
+atomically. This may not be what you want if values of those types can get too
+large to `bin_io` atomically.
+
+Fixpoint
+--------
+The `Fixpoint` functor can be used to make recursive types streamable. See the
+`btree.ml` in the `streamable_examples` library.
+
+Packed
+------
+The `Packed` functor takes a streamable type and returns the same type, but with
+a new implementation of the streamable interface. It attempts to decrease the
+number of parts by collecting multiple parts from the original streamable into a
+single part until it reaches a size threshold (currently `2^17` bytes).
+
+Many of the functors for container types are already wrapped in `Packed`, so it
+is usually unnecessary to use this one outside of the library. This is most
+often useful if you are manually implementing the `Streamable` interface but the
+most natural way of doing so generates many small parts.
+
+Call for functors
+-----------------
+The library has grown organically as new types are needed.  If you
+don't find a functor to turn `Streamable` `'a`s into `Streamable`  `'a
+Foo.t`s, that's only because no one has needed to do so yet.  Please
+write a feature!  The code in the library is very idiomatic, so you
+shouldn't have any trouble.

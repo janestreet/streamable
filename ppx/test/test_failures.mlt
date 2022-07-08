@@ -1,0 +1,234 @@
+open! Core
+
+module Type_parameters_are_unsupported = struct
+  type _ t = int [@@deriving streamable ~version:1]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: ppx_streamable: type parameters are not supported.
+|}]
+
+module Multiple_types_are_unsupported = struct
+  type t = int
+  and u = string [@@deriving streamable ~version:1]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: ppx_streamable: mutually-recursive types are not supported.
+|}]
+
+module Type_must_be_named_t = struct
+  type u = int [@@deriving streamable ~version:1]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: ppx_streamable: only types named [t] are supported.
+|}]
+
+module Constructor_arguments_cannot_be_anonymous_records = struct
+  type t =
+    | A of
+        { a : int
+        ; b : string
+        }
+  [@@deriving streamable ~version:1]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: ppx_streamable: variant constructor `A' contains an anonymous record argument, which isn't supported.
+|}]
+
+module Version_argument_must_be_specified = struct
+  type t = int [@@deriving streamable]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: ppx_streamable: the [~version] argument must be specified (as an integer value).
+|}]
+
+module Version_argument_must_be_specified = struct
+  type t = int [@@deriving streamable ~version:"1"]
+end
+
+[%%expect {|
+Line _, characters _-_:
+Error: integer expected
+|}]
+
+module Handling_of_certain_compound_types_is_unknown = struct
+  type t = int Queue.t [@@deriving streamable ~version:1]
+end
+
+[%%expect {|
+Line _, characters _-_:
+Error: Handling of type `int Queue.t' is unknown.
+|}]
+
+module Atomic_attribute_is_not_used_on_hashtbl_key = struct
+  type t = ((String.t[@streamable.atomic]), int) Hashtbl.t
+  [@@deriving streamable ~version:1]
+end
+
+[%%expect {|
+Line _, characters _-_:
+Error: Attribute `streamable.atomic' was not used
+|}]
+
+module Atomic_attribute_is_not_used_on_map_key = struct
+  type t = ((String.t[@streamable.atomic]), int, String.comparator_witness) Map.t
+  [@@deriving streamable ~version:1]
+end
+
+[%%expect {|
+Line _, characters _-_:
+Error: Attribute `streamable.atomic' was not used
+|}]
+
+module Handling_of_non_core_primitive_is_unknown = struct
+  type foo = int * string
+  type t   = foo [@@deriving streamable ~version:1]
+end
+
+[%%expect {|
+Line _, characters _-_:
+Error: Handling of type `foo' is unknown.
+|}]
+
+module Submodule_set_bad_arity = struct
+  type t = int String.Set.t [@@deriving streamable ~version:1]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: The arity of `String.Set.t' was expected to be 0 but was found to be 1
+|}]
+
+module Parameterized_set_bad_arity = struct
+  type t = string Set.t [@@deriving streamable ~version:1]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: The arity of `Set.t' was expected to be 2 but was found to be 1
+|}]
+
+module Submodule_map_bad_arity = struct
+  type t = String.Map.t [@@deriving streamable ~version:1]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: The arity of `String.Map.t' was expected to be 1 but was found to be 0
+|}]
+
+module Parameterized_map_bad_arity = struct
+  type t = int Map.t [@@deriving streamable ~version:1]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: The arity of `Map.t' was expected to be 3 but was found to be 1
+|}]
+
+module Submodule_hashtbl_bad_arity = struct
+  type t = String.Table.t [@@deriving streamable ~version:1]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: The arity of `String.Table.t' was expected to be 1 but was found to be 0
+|}]
+
+module Parameterized_hashtbl_bad_arity = struct
+  type t = int Hashtbl.t [@@deriving streamable ~version:1]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: The arity of `Hashtbl.t' was expected to be 2 but was found to be 1
+|}]
+
+module Unused_attributes = struct
+  type t =
+    { a : (int[@streamable.atomic])
+    ; b : string list
+    }
+  [@@deriving bin_io, sexp, streamable ~atomic ~version:1]
+end
+
+[%%expect {|
+Line _, characters _-_:
+Error: Attribute `streamable.atomic' was not used
+|}]
+
+module Atomic_streamable_before_binio = struct
+  type t =
+    { a : int
+    ; b : string list
+    }
+  [@@deriving streamable ~atomic ~version:1, bin_io, sexp]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: ppx_streamable: The following derivers must appear before streamable ~atomic: bin_io, sexp.
+|}]
+
+module Atomic_rpc_streamable_before_binio = struct
+  type t =
+    { a : int
+    ; b : string list
+    }
+  [@@deriving streamable ~atomic ~rpc ~version:1, bin_io, sexp]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: ppx_streamable: The following derivers must appear before streamable ~atomic ~rpc: bin_io.
+|}]
+
+module Atomic_streamable_before_sexp = struct
+  type t =
+    { a : int
+    ; b : string list
+    }
+  [@@deriving bin_io, streamable ~atomic ~version:1, sexp]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: ppx_streamable: The following derivers must appear before streamable ~atomic: sexp.
+|}]
+
+module Atomic_streamable_without_binio_and_sexp = struct
+  type t =
+    { a : int
+    ; b : string list
+    }
+  [@@deriving streamable ~atomic ~version:1]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: ppx_streamable: The following derivers must appear before streamable ~atomic: bin_io, sexp.
+|}]

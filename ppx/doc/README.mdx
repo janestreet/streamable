@@ -1,0 +1,240 @@
+# ppx_streamable
+
+Overview
+----------
+
+`ppx_streamable` is a deriving ppx that makes it easy to define types
+that are compatible with the `Streamable.S` and `Streamable.S_rpc`
+interfaces, while avoiding the boilerplate and tedium of writing out
+the `Streamable.Of_*` functors by hand.
+
+You can can think of `Streamable` as the runtime library counterpart
+of `ppx_streamable`.
+
+Usage
+------
+
+<!--
+Preliminary opens
+```ocaml
+open Core
+```
+-->
+First, we add the following clause to our `jbuild`, within the `library` stanza:
+
+```
+(preprocess (
+    pps (
+      ppx_jane
+      ;; others you may already have...
+      ppx_streamable)))
+```
+
+We can then decorate our type `t` with `[@@deriving streamable]` which
+will make it compatible with the `Streamable.S` interface. We must
+also provide a `~version` argument, which specifies which functor
+versions we will use. Namely, the argument `~version:n` means we use
+the functors defined within `Streamable.Stable.Vn`.
+
+```ocaml
+module T = struct
+  type t =
+    { foo : int
+    ; bar : float Or_error.t
+    ; qux : bool String.Map.t
+    }
+  [@@deriving streamable ~version:1]
+end
+
+(* Verify that [T] satisfies [Streamable.S]. *)
+module _ : Streamable.S = T
+```
+
+If we instead want our type to satisfy the `Streamable.S_rpc`
+interface, we can add the `~rpc` argument.
+
+```ocaml
+module T_rpc = struct
+  type t =
+    { foo : int
+    ; bar : float Or_error.t
+    ; qux : bool String.Map.t
+    }
+  [@@deriving streamable ~rpc ~version:1]
+end
+
+(* Verify that [T_rpc] satisfies [Streamable.S_rpc]. *)
+module _ : Streamable.S_rpc = T_rpc
+```
+
+If we want to serialize our entire type atomically, we can add the
+`~atomic` argument.
+
+```ocaml
+module T_atomic = struct
+  type t =
+    { foo : int
+    ; bar : float Or_error.t
+    ; qux : bool String.Map.t
+    }
+  [@@deriving bin_io, streamable ~atomic ~rpc ~version:1]
+end
+
+(* Verify that [T_atomic] satisfies [Streamable.S_rpc]. *)
+module _ : Streamable.S_rpc = T_atomic
+```
+
+Note that this requires that the type derives `bin_io` (and `sexp`, if
+`~rpc` is not provided) *before* it derives `streamable`, since the
+latter uses definitions from the former when invoking the `Streamable`
+functors.
+
+The ppx can also be added to a type in a signature, in order to assert
+that the type conforms to either the `Streamable.S` or
+`Streamable.S_rpc` interface.
+
+```ocaml
+module type S = sig
+  type t [@@deriving streamable]
+end
+
+module type S_rpc = sig
+  type t [@@deriving streamable ~rpc]
+end
+
+module _ : S = T
+module _ : S_rpc = T_rpc
+```
+
+That's it!
+
+Attributes
+------------
+
+### `[@streamable.atomic]`
+By default, a type of the form `Module.Path.t` that appears anywhere
+within the type `t` will be expected to satisfy either the
+`Streamable.S` or `Streamable.S_rpc` interface.
+
+```ocaml
+module Foo = struct
+  type t = int * string [@@deriving bin_io, sexp]
+end
+```
+
+```ocaml
+module T_without_atomic = struct
+  type t =
+    { foo : Foo.t (* [Foo.t] is expected to satisfy [Streamable.S], which it does not. *)
+    ; bar : float Or_error.t
+    ; qux : bool String.Map.t
+    }
+  [@@deriving streamable ~version:1]
+end
+```
+```mdx-error
+Line 3, characters 15-20:
+Error: Signature mismatch:
+...
+       The value `finalize' is required but not provided
+       File "module_type.ml", line 102, characters 2-36: Expected declaration
+       The value `to_parts' is required but not provided
+       File "module_type.ml", line 101, characters 2-52: Expected declaration
+       The module `Intermediate' is required but not provided
+       File "module_type.ml", lines 90-99, characters 2-5:
+         Expected declaration
+```
+
+However, one can force the type to be treated as an atomically
+streamable value by annotating it with the `[@streamable.atomic]`
+attribute.
+
+```ocaml
+module T_with_atomic_field = struct
+  type t =
+    { foo : (Foo.t[@streamable.atomic])
+    ; bar : float Or_error.t
+    ; qux : bool String.Map.t
+    }
+  [@@deriving streamable ~version:1]
+end
+
+(* Verify that [T_with_atomic_field] satisfies [Streamable.S]. *)
+module _ : Streamable.S = T_with_atomic_field
+```
+
+Migrating from Hand-Written Functors to `ppx_streamable`
+----------------------------------------------------------------------
+
+In case you'd like to migrate an existing project that uses
+hand-written functors to use `ppx_streamable` instead, you should keep
+in mind that compilation is not always sufficient for runtime
+correctness, because the different versions of the `Streamable`
+functors use different intermediate representations when performing
+(de)serialization.
+
+If you've made a type streamable by...
+
+1. using the unstable `Streamable.*` functors, or
+
+2. using the `Streamable.Stable.Vn.*` functors where `n` is the
+latest top-level version available, or
+
+3. using the `Streamable.Stable.*.Vn` functors where `n` is the latest
+version available for each individual functor
+
+...then it is safe to swap out the hand-written functors in favor of
+`ppx_streamable` with the latest `~version` argument.
+
+If you've used any `Streamable.Stable.*.Vm` functors where `m` is not
+the latest version available for that individual functor, then you
+should first check whether there is a top-level `Streamable.Stable.Vk`
+module that matches the same versions that you use. If so, then it is
+safe to use `ppx_streamable` with the `~version:k` argument (this is
+also true if you've used the `Streamable.Stable.Vk.*` functors).
+
+Else, you may just need to bump your stable type and use
+`ppx_streamable` on the latest version.
+
+You may also find it helpful to use `[@@deriving_inline streamable]
+[@@@end]` and accept the corrected output in order to inspect what the
+ppx generates, so that you can verify whether the changes are safe.
+
+Supported Types
+-------------------
+
+The ppx currently supports the following types, and produces the
+corresponding `Streamable.Of_*` functor call:
+
+| type                                     | functor                                                        |
+-------------------------------------------|----------------------------------------------------------------|
+| `'a Fqueue.t`                            | `Streamable.Of_fqueue`                                         |
+| `'a B.Table.t` or `('b, 'a) Hashtbl.t`   | `Streamable.Of_hashtbl`                               |
+| `'a list` or `'a List.t`                 | `Streamable.Of_list`                                           |
+| `'a B.Map.t` or `('b, 'a, 'c) Map.t`     | `Streamable.Of_map`                                     |
+| `'a option` or `'a Option.t`             | `Streamable.Of_option`                                         |
+| `'a Or_error.t`                          | `Streamable.Of_result` (with `Core.Error.t` as the error type) |
+| `'a <primitive>`                         | `Streamable.Of_atomic (<Primitive>)`                           |
+| `<record>`                               | `Streamable.Of_streamable (Streamable.Of_tupleN (...))`<sup>[1](#footnote1)</sup>  |
+| `('a, 'b) result` or `('a, 'b) Result.t` | `Streamable.Of_result`                             |
+| `a Sequence.t`                           | `Streamable.Of_sequence`                                       |
+| `A.Set.t`                                | `Streamable.Of_set`                                            |
+| `(a1 * ... * an)`                        | `Streamable.Of_tupleN`                                         |
+| `<variant>`                              | `Streamable.Of_streamable (Streamable.Of_variantN (...))`<sup>[2](#footnote2)</sup> |
+
+There are values of N past which `Streamable.Of_tuple{N}` and
+`Streamable.Of_variant{N}` do not exist.  In those situations, we nest
+calls to these functors that serialize wide tuples/variants as nested
+tuples/variants so that we are not limited to small tuples/variants.
+
+Footnotes
+-----------
+<a name="footnote1">1</a>: If the record only contains one field then
+we omit the `Streamable.Of_tuple` part and directly convert to and
+from the singleton field's type using `Streamable.Of_streamable`.
+
+<a name="footnote2">2</a>: If the variant only contains one
+constructor then we omit the `Streamable.Of_variantN` part and
+directly convert to and from the singleton constructor's type using
+`Streamable.Of_streamable`.  Variants with zero constructors are also
+supported.
