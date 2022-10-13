@@ -18,7 +18,7 @@ depends: [
   "core_kernel"
   "ppx_jane"
   "dune"             {>= "2.0.0"}
-  "ppxlib"           {>= "0.26.0"}
+  "ppxlib"           {>= "0.28.0"}
 ]
 synopsis: "A collection of types suitable for incremental serialization."
 description: "

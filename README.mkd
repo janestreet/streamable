@@ -1,9 +1,8 @@
-"Streamable library"
-====================
+# Streamable library
 
 The Streamable library contains a signature for types supporting
 incremental serialization. It acts as the "runtime library" for
-[`ppx_streamable`](https://docpub/JD/p/ppx-streamable/cbb93649-c7e7-3075-a9ad-cd7a9ae1eabd),
+[`ppx_streamable`](https://github.com/janestreet/streamable/tree/master/ppx/doc),
 which may be easier to use than directly invoking the functors exposed
 by this library.
 
@@ -35,7 +34,10 @@ The goal of the functors are to avoid the need to manually fulfill the
 streamable interface. In most cases they should be sufficient. The functors all
 fulfill the round-trip identity law, as long as their arguments do the same.
 
-All of the functors are available in `Stable` forms.
+All of the functors are available in `Stable` forms.  A Stable module
+is guaranteed to not change over time.  If we ever want to change how
+we serialize a particular type, we'll do so by adding a new stable
+version so that client code can upgrade on their own time.
 
 Of_atomic
 ---------
@@ -114,11 +116,3 @@ Many of the functors for container types are already wrapped in `Packed`, so it
 is usually unnecessary to use this one outside of the library. This is most
 often useful if you are manually implementing the `Streamable` interface but the
 most natural way of doing so generates many small parts.
-
-Call for functors
------------------
-The library has grown organically as new types are needed.  If you
-don't find a functor to turn `Streamable` `'a`s into `Streamable`  `'a
-Foo.t`s, that's only because no one has needed to do so yet.  Please
-write a feature!  The code in the library is very idiomatic, so you
-shouldn't have any trouble.

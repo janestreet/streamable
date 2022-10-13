@@ -10,7 +10,7 @@ module type S_intermediate_rpc = sig
     type t [@@deriving bin_io]
   end
 
-  val create : unit -> t
+  val create     : unit -> t
   val apply_part : t -> Part.t -> t
 end
 
@@ -23,7 +23,7 @@ module _ (M : S_intermediate_rpc) : S_rpc with module Intermediate = M = struct
 
   module Intermediate = M
 
-  let to_parts () = Sequence.empty
+  let to_parts ()        = Sequence.empty
   let finalize (_ : M.t) = ()
 end
 
@@ -41,7 +41,7 @@ module type S_only_functions = sig
       include Binable.S_only_functions with type t := t
     end
 
-    val create : unit -> t
+    val create     : unit -> t
     val apply_part : t -> Part.t -> t
   end
 
@@ -61,7 +61,7 @@ module type S_only_functions_rpc = sig
       include Binable.S_only_functions with type t := t
     end
 
-    val create : unit -> t
+    val create     : unit -> t
     val apply_part : t -> Part.t -> t
   end
 
@@ -70,16 +70,16 @@ module type S_only_functions_rpc = sig
 end
 
 module Stable = struct
-  module type S = S
-  module type S_rpc = S_rpc
+  module type S                       = S
+  module type S_rpc                   = S_rpc
   module type S_rpc_with_sexp_of_part = S_rpc_with_sexp_of_part
-  module type S_only_functions = S_only_functions
+  module type S_only_functions        = S_only_functions
 
   module Add_sexp = struct
     module V1 (S : S_rpc) (Part_sexp : Sexpable.S with type t := S.Intermediate.Part.t) :
       S
       with type t = S.t
-       and type Intermediate.t = S.Intermediate.t
+       and type Intermediate.t      = S.Intermediate.t
        and type Intermediate.Part.t = S.Intermediate.Part.t = struct
       include S
 
@@ -95,14 +95,14 @@ module Stable = struct
   end
 
   module Remove_t_rpc = Remove_t.F_rpc
-  module Remove_t = Remove_t.F
+  module Remove_t     = Remove_t.F
 
   module Of_only_functions_rpc = struct
     module V1 (X : S_only_functions_rpc) :
       S_rpc
-      with type t := X.t
-      with type Intermediate.t = X.Intermediate.t
-      with type Intermediate.Part.t = X.Intermediate.Part.t = struct
+      with type t                   := X.t
+      with type Intermediate.t      =  X.Intermediate.t
+      with type Intermediate.Part.t =  X.Intermediate.Part.t = struct
       module Intermediate = struct
         type t = X.Intermediate.t
 
@@ -116,13 +116,13 @@ module Stable = struct
 
           let bin_t =
             { Bin_prot.Type_class.shape = bin_shape_t
-            ; writer = bin_writer_t
-            ; reader = bin_reader_t
+            ; writer                    = bin_writer_t
+            ; reader                    = bin_reader_t
             }
           ;;
         end
 
-        let create = X.Intermediate.create
+        let create     = X.Intermediate.create
         let apply_part = X.Intermediate.apply_part
       end
 
@@ -134,9 +134,9 @@ module Stable = struct
   module Of_only_functions = struct
     module V1 (X : S_only_functions) :
       S
-      with type t := X.t
-      with type Intermediate.t = X.Intermediate.t
-      with type Intermediate.Part.t = X.Intermediate.Part.t =
+      with type t                   := X.t
+      with type Intermediate.t      =  X.Intermediate.t
+      with type Intermediate.Part.t =  X.Intermediate.Part.t =
       Add_sexp.V1
         (struct
           type t = X.t
@@ -187,7 +187,7 @@ module Stable = struct
                               end) :
       S_rpc
       with type t = X.t
-       and type Intermediate.t = Streamable.Intermediate.t
+       and type Intermediate.t      = Streamable.Intermediate.t
        and type Intermediate.Part.t = Streamable.Intermediate.Part.t = struct
       type t = X.t
 
@@ -216,7 +216,7 @@ module Stable = struct
       include
         S_rpc
         with type t := t
-         and type Intermediate.t = X.Intermediate.t
+         and type Intermediate.t      = X.Intermediate.t
          and type Intermediate.Part.t = X.Intermediate.Part.t Fqueue.t
     end = struct
       type t = X.t
@@ -235,6 +235,8 @@ module Stable = struct
         ;;
       end
 
+      (* Practice shows that 2^18 is not too high, but (as of 2016-08-11) we shouldn't
+         exceed 2^18 due to some limitations in writer.ml. *)
       let pack_threshold =
         if am_running_inline_test
         then 25 (* something small enough to test both sides of easily *)
@@ -250,11 +252,11 @@ module Stable = struct
           (X.to_parts t)
           ~init
           ~running_step:(fun (buffered_parts, buffered_len) xpart ->
-            let new_parts = Fqueue.enqueue buffered_parts xpart in
-            let new_len = buffered_len + X.Intermediate.Part.bin_size_t xpart in
+            let new_parts = Fqueue.enqueue buffered_parts xpart                 in
+            let new_len   = buffered_len + X.Intermediate.Part.bin_size_t xpart in
             if new_len >= pack_threshold
-            then Yield (new_parts, init)
-            else Skip (new_parts, new_len))
+            then Yield (new_parts, init    )
+            else Skip  (new_parts, new_len))
           ~inner_finished:fst
           ~finishing_step:(fun buffered_parts ->
             if Fqueue.is_empty buffered_parts
@@ -283,7 +285,7 @@ module Stable = struct
   module Of_key_value_intermediate_part = struct
     module Make (Key : Stable_without_of_sexp) (Data : S_rpc) = struct
       type t =
-        | Add_key of Key.t
+        | Add_key  of Key.t
         | Add_part of Data.Intermediate.Part.t
       [@@deriving bin_io, variants]
     end
@@ -296,8 +298,8 @@ module Stable = struct
                           type t
 
                           val create : unit -> t
-                          val mem : t -> Key.t -> bool
-                          val set : t -> key:Key.t -> data:Data.t -> t
+                          val mem    : t -> Key.t -> bool
+                          val set    : t -> key:Key.t -> data:Data.t -> t
                           val to_sequence : t -> (Key.t * Data.t) Sequence.t
                         end) =
     struct
@@ -312,7 +314,7 @@ module Stable = struct
           | At_key of store * Key.t * Data.Intermediate.t
 
         let to_store = function
-          | Empty -> Store.create ()
+          | Empty                    -> Store.create ()
           | At_key (store, key, int) -> Store.set store ~key ~data:(Data.finalize int)
         ;;
 
@@ -322,7 +324,7 @@ module Stable = struct
 
         let apply_part t part =
           match (part : Part.t) with
-          | Add_key key ->
+          | Add_key  key  ->
             let store = to_store t in
             assert (not (Store.mem store key));
             At_key (store, key, Data.Intermediate.create ())
@@ -353,8 +355,8 @@ module Stable = struct
                       type t
 
                       val create : unit -> t
-                      val mem : t -> Key.t -> bool
-                      val set : t -> key:Key.t -> data:Data.t -> t
+                      val mem    : t -> Key.t -> bool
+                      val set    : t -> key:Key.t -> data:Data.t -> t
                       val to_sequence : t -> (Key.t * Data.t) Sequence.t
                     end) =
     struct
@@ -365,7 +367,7 @@ module Stable = struct
           (Plain)
           (struct
             type t = Plain.Intermediate.Part.t =
-              | Add_key of Key.t
+              | Add_key  of Key.t
               | Add_part of Data.Intermediate.Part.t
             [@@deriving sexp]
           end)
@@ -376,8 +378,8 @@ module Stable = struct
     type t = Data.t Map.M(Key).t
 
     let create () = Map.empty (module Key)
-    let mem = Map.mem
-    let set = Map.set
+    let mem       = Map.mem
+    let set       = Map.set
     let to_sequence t = Map.to_sequence t
   end
 
@@ -453,7 +455,7 @@ module Stable = struct
     type t = (Key.t, Data.t) Hashtbl.t
 
     let create () = Hashtbl.create (module Key)
-    let mem = Hashtbl.mem
+    let mem       = Hashtbl.mem
 
     let set t ~key ~data =
       Hashtbl.set t ~key ~data;
@@ -1360,11 +1362,11 @@ module Stable = struct
 
         let apply_part t (part : Part.t) =
           match t, part with
-          | Empty, A_start -> A (A.Intermediate.create ())
-          | Empty, B_start -> B (B.Intermediate.create ())
-          | A a, A_part x -> A (A.Intermediate.apply_part a x)
-          | B b, B_part x -> B (B.Intermediate.apply_part b x)
-          | _ -> assert false
+          | Empty, A_start  -> A (A.Intermediate.create ())
+          | Empty, B_start  -> B (B.Intermediate.create ())
+          | A a  , A_part x -> A (A.Intermediate.apply_part a x)
+          | B b  , B_part x -> B (B.Intermediate.apply_part b x)
+          | _               -> assert false
         ;;
       end
 
@@ -1381,8 +1383,8 @@ module Stable = struct
 
       let finalize = function
         | Intermediate.Empty -> assert false
-        | Intermediate.A a -> `A (A.finalize a)
-        | Intermediate.B b -> `B (B.finalize b)
+        | Intermediate.A a   -> `A (A.finalize a)
+        | Intermediate.B b   -> `B (B.finalize b)
       ;;
     end
   end
@@ -1435,13 +1437,13 @@ module Stable = struct
 
         let apply_part t (part : Part.t) =
           match t, part with
-          | Empty, A_start -> A (A.Intermediate.create ())
-          | Empty, B_start -> B (B.Intermediate.create ())
-          | Empty, C_start -> C (C.Intermediate.create ())
-          | A a, A_part x -> A (A.Intermediate.apply_part a x)
-          | B b, B_part x -> B (B.Intermediate.apply_part b x)
-          | C c, C_part x -> C (C.Intermediate.apply_part c x)
-          | _ -> assert false
+          | Empty, A_start  -> A (A.Intermediate.create ())
+          | Empty, B_start  -> B (B.Intermediate.create ())
+          | Empty, C_start  -> C (C.Intermediate.create ())
+          | A a  , A_part x -> A (A.Intermediate.apply_part a x)
+          | B b  , B_part x -> B (B.Intermediate.apply_part b x)
+          | C c  , C_part x -> C (C.Intermediate.apply_part c x)
+          | _               -> assert false
         ;;
       end
 
@@ -1462,9 +1464,9 @@ module Stable = struct
 
       let finalize = function
         | Intermediate.Empty -> assert false
-        | Intermediate.A a -> `A (A.finalize a)
-        | Intermediate.B b -> `B (B.finalize b)
-        | Intermediate.C c -> `C (C.finalize c)
+        | Intermediate.A a   -> `A (A.finalize a)
+        | Intermediate.B b   -> `B (B.finalize b)
+        | Intermediate.C c   -> `C (C.finalize c)
       ;;
     end
   end
@@ -1523,15 +1525,15 @@ module Stable = struct
 
         let apply_part t (part : Part.t) =
           match t, part with
-          | Empty, A_start -> A (A.Intermediate.create ())
-          | Empty, B_start -> B (B.Intermediate.create ())
-          | Empty, C_start -> C (C.Intermediate.create ())
-          | Empty, D_start -> D (D.Intermediate.create ())
-          | A a, A_part x -> A (A.Intermediate.apply_part a x)
-          | B b, B_part x -> B (B.Intermediate.apply_part b x)
-          | C c, C_part x -> C (C.Intermediate.apply_part c x)
-          | D d, D_part x -> D (D.Intermediate.apply_part d x)
-          | _ -> assert false
+          | Empty, A_start  -> A (A.Intermediate.create ())
+          | Empty, B_start  -> B (B.Intermediate.create ())
+          | Empty, C_start  -> C (C.Intermediate.create ())
+          | Empty, D_start  -> D (D.Intermediate.create ())
+          | A a  , A_part x -> A (A.Intermediate.apply_part a x)
+          | B b  , B_part x -> B (B.Intermediate.apply_part b x)
+          | C c  , C_part x -> C (C.Intermediate.apply_part c x)
+          | D d  , D_part x -> D (D.Intermediate.apply_part d x)
+          | _               -> assert false
         ;;
       end
 
@@ -1556,10 +1558,10 @@ module Stable = struct
 
       let finalize = function
         | Intermediate.Empty -> assert false
-        | Intermediate.A a -> `A (A.finalize a)
-        | Intermediate.B b -> `B (B.finalize b)
-        | Intermediate.C c -> `C (C.finalize c)
-        | Intermediate.D d -> `D (D.finalize d)
+        | Intermediate.A a   -> `A (A.finalize a)
+        | Intermediate.B b   -> `B (B.finalize b)
+        | Intermediate.C c   -> `C (C.finalize c)
+        | Intermediate.D d   -> `D (D.finalize d)
       ;;
     end
   end
@@ -1590,8 +1592,8 @@ module Stable = struct
     module V1 (T : sig
         type 'a t
 
-        val to_sequence : 'a t -> 'a Sequence.t
-        val of_list : 'a list -> 'a t
+        val to_sequence : 'a t    -> 'a Sequence.t
+        val of_list     : 'a list -> 'a t
       end)
         (X : S_rpc) =
     struct
@@ -1611,7 +1613,7 @@ module Stable = struct
         let create () = None
 
         let force = function
-          | None -> []
+          | None             -> []
           | Some (xs, x_int) -> X.finalize x_int :: xs
         ;;
 
@@ -1620,14 +1622,14 @@ module Stable = struct
         let elt_part t ~part =
           match t with
           | Some (xs, int) -> Some (xs, X.Intermediate.apply_part int part)
-          | None -> assert false
+          | None           -> assert false
         ;;
 
         let apply_part t p =
           match (p : Part.t) with
-          | Elt_no_parts -> elt_start t
+          | Elt_no_parts        -> elt_start t
           | Elt_first_part part -> elt_start t |> elt_part ~part
-          | Elt_later_part part -> elt_part t ~part
+          | Elt_later_part part -> elt_part  t ~part
         ;;
       end
 
@@ -1637,7 +1639,7 @@ module Stable = struct
         Sequence.concat_map (T.to_sequence xs) ~f:(fun x ->
           let xparts = X.to_parts x in
           match Sequence.next xparts with
-          | None -> Sequence.singleton Intermediate.Part.elt_no_parts
+          | None          -> Sequence.singleton Intermediate.Part.elt_no_parts
           | Some (hd, tl) ->
             Sequence.cons
               (Intermediate.Part.elt_first_part hd)
@@ -1650,8 +1652,8 @@ module Stable = struct
     module V1 (T : sig
         type 'a t
 
-        val to_sequence : 'a t -> 'a Sequence.t
-        val of_list : 'a list -> 'a t
+        val to_sequence : 'a t    -> 'a Sequence.t
+        val of_list     : 'a list -> 'a t
       end)
         (X : S) =
     struct
@@ -1687,17 +1689,17 @@ module Stable = struct
         let create () = None
 
         let force = function
-          | None -> []
+          | None             -> []
           | Some (xs, x_int) -> X.finalize x_int :: xs
         ;;
 
         let apply_part t p =
           match (p : Part.t) with
-          | Elt_start -> Some (force t, X.Intermediate.create ())
+          | Elt_start  -> Some (force t, X.Intermediate.create ())
           | Elt_part p ->
             (match t with
              | Some (xs, int) -> Some (xs, X.Intermediate.apply_part int p)
-             | None -> assert false)
+             | None           -> assert false)
         ;;
       end
 
@@ -1715,11 +1717,11 @@ module Stable = struct
 
     (* Same as V2, but mashes together [Elt_start] and first [Elt_part] for compactness.
        (Particularly noticeable when list elements are atomic, a common case.) *)
-    module V3_not_packed = Of_list_or_sequence_not_packed_rpc.V1 (struct
+    module V3_not_packed  = Of_list_or_sequence_not_packed_rpc.V1 (struct
         type 'a t = 'a list
 
         let to_sequence = Sequence.of_list
-        let of_list x = x
+        let of_list x   = x
       end)
 
     module V3 (X : S_rpc) = Packed_rpc.V1 (V3_not_packed (X))
@@ -1740,7 +1742,7 @@ module Stable = struct
           end)
     end
 
-    module V2 (X : S) = Packed.V1 (V1 (X))
+    module V2 (X : S)    = Packed.V1 (V1 (X))
 
     (* Same as V2, but mashes together [Elt_start] and first [Elt_part] for compactness.
        (Particularly noticeable when list elements are atomic, a common case.) *)
@@ -1748,7 +1750,7 @@ module Stable = struct
         type 'a t = 'a list
 
         let to_sequence = Sequence.of_list
-        let of_list x = x
+        let of_list x   = x
       end)
 
     module V3 (X : S) = Packed.V1 (V3_not_packed (X))
@@ -1762,7 +1764,7 @@ module Stable = struct
         type q = Sexp.t Queue.t
 
         type t =
-          { stack : q Stack.t
+          { stack         : q Stack.t
           ; mutable queue : q
           }
 
@@ -1779,10 +1781,10 @@ module Stable = struct
         let apply_part t part =
           (match (part : Part.t) with
            | Atom atom -> Queue.enqueue t.queue (Atom atom)
-           | Push ->
+           | Push      ->
              Stack.push t.stack t.queue;
              t.queue <- Queue.create ()
-           | Pop ->
+           | Pop       ->
              let top = Sexp.List (Queue.to_list t.queue) in
              t.queue <- Stack.pop_exn t.stack;
              Queue.enqueue t.queue top);
@@ -1801,11 +1803,11 @@ module Stable = struct
       let yield (part : Intermediate.Part.t) = G.yield part
 
       let rec parts_of_sexp : Sexp.t -> _ = function
-        | Atom x -> yield (Atom x)
+        | Atom x  -> yield (Atom x)
         | List xs ->
-          let%bind () = yield Push in
+          let%bind () = yield Push        in
           let%bind () = parts_of_sexps xs in
-          let%bind () = yield Pop in
+          let%bind () = yield Pop         in
           return ()
 
       and parts_of_sexps xs = Sequence.Generator.all_unit (List.map xs ~f:parts_of_sexp)
@@ -1827,7 +1829,7 @@ module Stable = struct
 
           let of_streamable = function
             | [ x ] -> [%of_sexp: Sexpable.t] x
-            | _ -> assert false
+            | _     -> assert false
           ;;
         end)
   end
@@ -1849,24 +1851,24 @@ module Stable = struct
         let create () = None
 
         let apply_part t = function
-          | Part.Elt_start ->
+          | Part.Elt_start  ->
             (match t with
-             | None -> Some (X.Intermediate.create ())
+             | None   -> Some (X.Intermediate.create ())
              | Some _ -> assert false)
           | Part.Elt_part p ->
             (match t with
              | Some x_int -> Some (X.Intermediate.apply_part x_int p)
-             | None -> assert false)
+             | None       -> assert false)
         ;;
       end
 
       let finalize = function
-        | None -> None
+        | None       -> None
         | Some x_int -> Some (X.finalize x_int)
       ;;
 
       let to_parts = function
-        | None -> Sequence.empty
+        | None   -> Sequence.empty
         | Some x ->
           Sequence.cons
             Intermediate.Part.elt_start
@@ -1887,14 +1889,14 @@ module Stable = struct
                type nonrec t = t
 
                let to_streamable = function
-                 | None -> []
+                 | None   -> []
                  | Some x -> [ x ]
                ;;
 
                let of_streamable = function
-                 | [] -> None
+                 | []    -> None
                  | [ x ] -> Some x
-                 | _ -> assert false
+                 | _     -> assert false
                ;;
              end))
     end
@@ -1928,14 +1930,14 @@ module Stable = struct
                type nonrec t = t
 
                let to_streamable = function
-                 | None -> []
+                 | None   -> []
                  | Some x -> [ x ]
                ;;
 
                let of_streamable = function
-                 | [] -> None
+                 | []    -> None
                  | [ x ] -> Some x
-                 | _ -> assert false
+                 | _     -> assert false
                ;;
              end))
     end
@@ -1953,7 +1955,7 @@ module Stable = struct
                type nonrec t = t
 
                let to_streamable = function
-                 | Ok x -> `A x
+                 | Ok    x -> `A x
                  | Error x -> `B x
                ;;
 
@@ -1977,7 +1979,7 @@ module Stable = struct
                type nonrec t = t
 
                let to_streamable = function
-                 | Ok x -> `A x
+                 | Ok    x -> `A x
                  | Error x -> `B x
                ;;
 
@@ -2094,7 +2096,7 @@ module Stable = struct
         type 'a t = 'a Sequence.t
 
         let to_sequence x = x
-        let of_list = Sequence.of_list
+        let of_list       = Sequence.of_list
       end)
 
     module V1 (X : S_rpc) = Packed_rpc.V1 (V1_not_packed (X))
@@ -2105,7 +2107,7 @@ module Stable = struct
         type 'a t = 'a Sequence.t
 
         let to_sequence x = x
-        let of_list = Sequence.of_list
+        let of_list       = Sequence.of_list
       end)
 
     module V1 (X : S) = Packed.V1 (V1_not_packed (X))
@@ -2138,7 +2140,7 @@ module Stable = struct
             ;;
           end
 
-          let create = Rec.Intermediate.create
+          let create     = Rec.Intermediate.create
           let apply_part = Rec.Intermediate.apply_part
         end
 
@@ -2185,7 +2187,7 @@ module Stable = struct
             ;;
           end
 
-          let create = Rec.Intermediate.create
+          let create     = Rec.Intermediate.create
           let apply_part = Rec.Intermediate.apply_part
         end
 
@@ -2207,57 +2209,57 @@ module Stable = struct
   end
 
   module V1 = struct
-    module Fixpoint = Fixpoint.V1
-    module Fixpoint_rpc = Fixpoint_rpc.V1
-    module Of_atomic = Of_atomic.V1
-    module Of_atomic_rpc = Of_atomic_rpc.V1
-    module Of_fqueue = Of_fqueue.V3
-    module Of_fqueue_rpc = Of_fqueue_rpc.V3
-    module Of_hashtbl = Of_hashtbl.V1
-    module Of_hashtbl_rpc = Of_hashtbl_rpc.V1
-    module Of_list = Of_list.V3
-    module Of_list_rpc = Of_list_rpc.V3
-    module Of_map = Of_map.V2
-    module Of_map_rpc = Of_map_rpc.V2
-    module Of_option = Of_option.V2
-    module Of_option_rpc = Of_option_rpc.V2
-    module Of_result = Of_result.V1
-    module Of_result_rpc = Of_result_rpc.V1
-    module Of_sequence = Of_sequence.V1
-    module Of_sequence_rpc = Of_sequence_rpc.V1
-    module Of_set = Of_set.V3
-    module Of_set_rpc = Of_set_rpc.V3
-    module Of_sexpable = Of_sexpable.V1
-    module Of_streamable = Of_streamable.V1
+    module Fixpoint          = Fixpoint.V1
+    module Fixpoint_rpc      = Fixpoint_rpc.V1
+    module Of_atomic         = Of_atomic.V1
+    module Of_atomic_rpc     = Of_atomic_rpc.V1
+    module Of_fqueue         = Of_fqueue.V3
+    module Of_fqueue_rpc     = Of_fqueue_rpc.V3
+    module Of_hashtbl        = Of_hashtbl.V1
+    module Of_hashtbl_rpc    = Of_hashtbl_rpc.V1
+    module Of_list           = Of_list.V3
+    module Of_list_rpc       = Of_list_rpc.V3
+    module Of_map            = Of_map.V2
+    module Of_map_rpc        = Of_map_rpc.V2
+    module Of_option         = Of_option.V2
+    module Of_option_rpc     = Of_option_rpc.V2
+    module Of_result         = Of_result.V1
+    module Of_result_rpc     = Of_result_rpc.V1
+    module Of_sequence       = Of_sequence.V1
+    module Of_sequence_rpc   = Of_sequence_rpc.V1
+    module Of_set            = Of_set.V3
+    module Of_set_rpc        = Of_set_rpc.V3
+    module Of_sexpable       = Of_sexpable.V1
+    module Of_streamable     = Of_streamable.V1
     module Of_streamable_rpc = Of_streamable_rpc.V1
-    module Of_total_map = Of_total_map.V1
-    module Of_total_map_rpc = Of_total_map_rpc.V1
-    module Of_tuple2 = Of_tuple2.V1
-    module Of_tuple2_rpc = Of_tuple2_rpc.V1
-    module Of_tuple3 = Of_tuple3.V1
-    module Of_tuple3_rpc = Of_tuple3_rpc.V1
-    module Of_tuple4 = Of_tuple4.V1
-    module Of_tuple4_rpc = Of_tuple4_rpc.V1
-    module Of_tuple5 = Of_tuple5.V1
-    module Of_tuple5_rpc = Of_tuple5_rpc.V1
-    module Of_tuple6 = Of_tuple6.V1
-    module Of_tuple6_rpc = Of_tuple6_rpc.V1
-    module Of_tuple7 = Of_tuple7.V1
-    module Of_tuple7_rpc = Of_tuple7_rpc.V1
-    module Of_tuple8 = Of_tuple8.V1
-    module Of_tuple8_rpc = Of_tuple8_rpc.V1
-    module Of_tuple9 = Of_tuple9.V1
-    module Of_tuple9_rpc = Of_tuple9_rpc.V1
-    module Of_variant2 = Of_variant2.V1
-    module Of_variant2_rpc = Of_variant2_rpc.V1
-    module Of_variant3 = Of_variant3.V1
-    module Of_variant3_rpc = Of_variant3_rpc.V1
-    module Of_variant4 = Of_variant4.V1
-    module Of_variant4_rpc = Of_variant4_rpc.V1
-    module Packed = Packed.V1
-    module Packed_rpc = Packed_rpc.V1
-    module Remove_t = Remove_t
-    module Remove_t_rpc = Remove_t_rpc
+    module Of_total_map      = Of_total_map.V1
+    module Of_total_map_rpc  = Of_total_map_rpc.V1
+    module Of_tuple2         = Of_tuple2.V1
+    module Of_tuple2_rpc     = Of_tuple2_rpc.V1
+    module Of_tuple3         = Of_tuple3.V1
+    module Of_tuple3_rpc     = Of_tuple3_rpc.V1
+    module Of_tuple4         = Of_tuple4.V1
+    module Of_tuple4_rpc     = Of_tuple4_rpc.V1
+    module Of_tuple5         = Of_tuple5.V1
+    module Of_tuple5_rpc     = Of_tuple5_rpc.V1
+    module Of_tuple6         = Of_tuple6.V1
+    module Of_tuple6_rpc     = Of_tuple6_rpc.V1
+    module Of_tuple7         = Of_tuple7.V1
+    module Of_tuple7_rpc     = Of_tuple7_rpc.V1
+    module Of_tuple8         = Of_tuple8.V1
+    module Of_tuple8_rpc     = Of_tuple8_rpc.V1
+    module Of_tuple9         = Of_tuple9.V1
+    module Of_tuple9_rpc     = Of_tuple9_rpc.V1
+    module Of_variant2       = Of_variant2.V1
+    module Of_variant2_rpc   = Of_variant2_rpc.V1
+    module Of_variant3       = Of_variant3.V1
+    module Of_variant3_rpc   = Of_variant3_rpc.V1
+    module Of_variant4       = Of_variant4.V1
+    module Of_variant4_rpc   = Of_variant4_rpc.V1
+    module Packed            = Packed.V1
+    module Packed_rpc        = Packed_rpc.V1
+    module Remove_t          = Remove_t
+    module Remove_t_rpc      = Remove_t_rpc
   end
 
   module Latest = V1

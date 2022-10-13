@@ -24,18 +24,130 @@ end
 type ('q, 's, 'u) t =
   (module S_plus with type query = 'q and type state = 's and type update = 'u)
 
+module Part_or_done = struct
+  type 'a t =
+    | Part of 'a
+    | Done
+  [@@deriving bin_io]
+end
+
+module Response = struct
+  type ('state_part, 'update_part) t =
+    | State  of 'state_part  Part_or_done.t
+    | Update of 'update_part Part_or_done.t
+  [@@deriving bin_io]
+end
+
+module Direct_writer = struct
+  module T = Rpc.Pipe_rpc.Direct_stream_writer
+
+  type ('state_part, 'update_part) t =
+    { writer          : ('state_part, 'update_part) Response.t T.t
+    ; state_finalised : unit Ivar.t
+    }
+
+  let wrap writer = { writer; state_finalised = Ivar.create () }
+  let[@inline] is_state_finalised t = Ivar.is_full t.state_finalised
+  let state_finalised t = Ivar.read t.state_finalised
+
+  let[@cold] raise_state_write_after_finalising () =
+    raise_s
+      [%message
+        "Cannot write state parts to State_rpc.Direct_writer after finalising initial \
+         state"]
+  ;;
+
+  let[@inline] raise_if_finalised t =
+    if is_state_finalised t then raise_state_write_after_finalising ()
+  ;;
+
+  let write_state_without_pushback_exn t state =
+    raise_if_finalised t;
+    T.write_without_pushback t.writer (Response.State (Part state))
+  ;;
+
+  let finalise_state_without_pushback_exn t =
+    raise_if_finalised t;
+    match T.write_without_pushback t.writer (Response.State Done) with
+    | `Ok     ->
+      Ivar.fill t.state_finalised ();
+      `Ok
+    | `Closed -> `Closed
+  ;;
+
+  let[@cold] raise_update_write_before_finalising () =
+    raise_s
+      [%message
+        "Cannot write update parts to State_rps.Direct_writer before finalising initial \
+         state"]
+  ;;
+
+  let[@inline] raise_if_not_finalised t =
+    if not (is_state_finalised t) then raise_update_write_before_finalising ()
+  ;;
+
+  let write_update_without_pushback_exn t update =
+    raise_if_not_finalised t;
+    T.write_without_pushback t.writer (Response.Update (Part update))
+  ;;
+
+  let finalise_update_without_pushback_exn t =
+    raise_if_not_finalised t;
+    T.write_without_pushback t.writer (Response.Update Done)
+  ;;
+
+  let close     t = T.close     t.writer
+  let closed    t = T.closed    t.writer
+  let flushed   t = T.flushed   t.writer
+  let is_closed t = T.is_closed t.writer
+
+  module Group = struct
+    module T_group = Rpc.Pipe_rpc.Direct_stream_writer.Group
+
+    type ('state_part, 'update_part) t = ('state_part, 'update_part) Response.t T_group.t
+
+    let create            = T_group.create
+    let flushed_or_closed = T_group.flushed_or_closed
+
+    let add_exn t writer =
+      if not (is_state_finalised writer)
+      then
+        raise_s
+          [%message
+            "Can't add writer to State_rpc.Direct_writer.Group until it has finalised \
+             its initial state"];
+      T_group.add_exn t writer.writer
+    ;;
+
+    let remove t writer = T_group.remove t writer.writer
+
+    let write_update_without_pushback t update =
+      T_group.write_without_pushback t (Response.Update (Part update))
+    ;;
+
+    let finalise_update_without_pushback t =
+      T_group.write_without_pushback t (Response.Update Done)
+    ;;
+
+    let length = T_group.length
+
+    let close_all t =
+      (* We can't implement [to_list] without storing extra data (it seems wrong to return
+         writers that are not [phys_equal] to the original, even though we know what all
+         the fields would be).
+
+         Instead we supply this to close the added writers.
+      *)
+      T_group.to_list t |> List.iter ~f:T.close
+    ;;
+  end
+end
+
 module Make (X : S) = struct
   module Underlying_rpc = struct
-    type query = X.query [@@deriving bin_io]
+    type query    = X.query [@@deriving bin_io]
 
-    type 'a part_or_done =
-      | Part of 'a
-      | Done
-    [@@deriving bin_io]
-
-    type response =
-      | State  of X.State.Intermediate.Part.t  part_or_done
-      | Update of X.Update.Intermediate.Part.t part_or_done
+    type response = (X.State.Intermediate.Part.t, X.Update.Intermediate.Part.t) Response.t
     [@@deriving bin_io]
 
     type error = Error.Stable.V2.t [@@deriving bin_io]
@@ -59,7 +171,9 @@ module Make (X : S) = struct
 
     let write_msg w pipe ~constructor =
       let open Deferred.Let_syntax in
-      let%bind () = Pipe.transfer pipe w ~f:(fun part -> constructor (Part part)) in
+      let%bind () =
+        Pipe.transfer pipe w ~f:(fun part -> constructor (Part_or_done.Part part))
+      in
       Pipe.write_if_open w (constructor Done)
     ;;
 
@@ -78,9 +192,9 @@ module Make (X : S) = struct
             noun
         | `Ok msg ->
           (match match_ msg with
-           | Error e        -> Deferred.return (Error e)
-           | Ok (Part part) -> loop (X.Intermediate.apply_part acc part)
-           | Ok Done        -> return (X.finalize acc))
+           | Error e                     -> Deferred.return (Error e)
+           | Ok (Part_or_done.Part part) -> loop (X.Intermediate.apply_part acc part)
+           | Ok Done                     -> return (X.finalize acc))
       in
       loop (X.Intermediate.create ())
     ;;
@@ -113,7 +227,9 @@ module Make (X : S) = struct
                Queue.iter queue ~f:(fun update_pipe ->
                  Pipe.close_read update_pipe));
             Pipe.close_read update_pipes);
-          let%bind () = write_msg w state_pipe ~constructor:(fun x -> State x) in
+          let%bind () =
+            write_msg w state_pipe ~constructor:(fun x -> Response.State x)
+          in
           Pipe.iter update_pipes ~f:(fun update_pipe ->
             write_msg w update_pipe ~constructor:(fun x -> Update x))))
     ;;
@@ -134,7 +250,7 @@ module Make (X : S) = struct
         r
         ~noun:"state"
         ~match_:(function
-          | State  x -> Ok x
+          | Response.State x -> Ok x
           | Update _ -> Or_error.errorf "Streamable.State_rpc: incomplete state message")
     ;;
 
@@ -144,8 +260,8 @@ module Make (X : S) = struct
         r
         ~noun:"update"
         ~match_:(function
-          | Update x -> Ok x
-          | State  _ -> Or_error.errorf "Streamable.State_rpc: incomplete update message")
+          | Response.Update x -> Ok x
+          | State _ -> Or_error.errorf "Streamable.State_rpc: incomplete update message")
     ;;
 
     let dispatch conn query =
@@ -189,6 +305,11 @@ module Make (X : S) = struct
   ;;
 
   let implement' = Underlying_rpc.implement'
+
+  let implement_direct f =
+    Rpc.Pipe_rpc.implement_direct Underlying_rpc.rpc (fun c q writer ->
+      f c q (Direct_writer.wrap writer))
+  ;;
 end
 
 let description     (type q s u) ((module X) : (q, s, u) t) = X.Underlying_rpc.description
