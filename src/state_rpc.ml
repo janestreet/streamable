@@ -9,12 +9,14 @@ module type S_plus = sig
 
   module Underlying_rpc : sig
     val dispatch
-      :  Rpc.Connection.t
+      :  ?metadata:Rpc_metadata.t
+      -> Rpc.Connection.t
       -> query
       -> (state * update Pipe.Reader.t) Deferred.Or_error.t
 
     val implement
-      :  ('c -> query -> (state * update Pipe.Reader.t) Deferred.Or_error.t)
+      :  ?on_exception:Rpc.On_exception.t
+      -> ('c -> query -> (state * update Pipe.Reader.t) Deferred.Or_error.t)
       -> 'c Rpc.Implementation.t
 
     val description : Rpc.Description.t
@@ -213,8 +215,8 @@ module Make (X : S) = struct
       type part = Intermediate.Part.t
     end
 
-    let implement' f =
-      Rpc.Pipe_rpc.implement rpc (fun c q ->
+    let implement' ?on_exception f =
+      Rpc.Pipe_rpc.implement ?on_exception rpc (fun c q ->
         let open Deferred.Or_error.Let_syntax in
         let%bind state_pipe, update_pipes = f c q in
         return
@@ -234,8 +236,8 @@ module Make (X : S) = struct
             write_msg w update_pipe ~constructor:(fun x -> Update x))))
     ;;
 
-    let implement f =
-      implement' (fun c q ->
+    let implement ?on_exception f =
+      implement' ?on_exception (fun c q ->
         let open Deferred.Or_error.Let_syntax in
         let%bind state, updates = f c q in
         return
@@ -264,9 +266,10 @@ module Make (X : S) = struct
           | State _ -> Or_error.errorf "Streamable.State_rpc: incomplete update message")
     ;;
 
-    let dispatch conn query =
+    let dispatch ?metadata conn query =
       let%bind r, _ =
-        Deferred.Let_syntax.(Rpc.Pipe_rpc.dispatch rpc conn query >>| Or_error.join)
+        Deferred.Let_syntax.(
+          Rpc.Pipe_rpc.dispatch ?metadata rpc conn query >>| Or_error.join)
       in
       let%bind initial_state = read_state r in
       let updates =
@@ -306,15 +309,22 @@ module Make (X : S) = struct
 
   let implement' = Underlying_rpc.implement'
 
-  let implement_direct f =
-    Rpc.Pipe_rpc.implement_direct Underlying_rpc.rpc (fun c q writer ->
+  let implement_direct ?on_exception f =
+    Rpc.Pipe_rpc.implement_direct ?on_exception Underlying_rpc.rpc (fun c q writer ->
       f c q (Direct_writer.wrap writer))
   ;;
 end
 
-let description     (type q s u) ((module X) : (q, s, u) t) = X.Underlying_rpc.description
-let dispatch        (type q s u) ((module X) : (q, s, u) t) = X.Underlying_rpc.dispatch
-let implement       (type q s u) ((module X) : (q, s, u) t) = X.Underlying_rpc.implement
+let description (type q s u) ((module X) : (q, s, u) t) = X.Underlying_rpc.description
+
+let dispatch (type q s u) ?metadata ((module X) : (q, s, u) t) =
+  X.Underlying_rpc.dispatch ?metadata
+;;
+
+let implement (type q s u) ?on_exception ((module X) : (q, s, u) t) =
+  X.Underlying_rpc.implement ?on_exception
+;;
+
 let bin_query_shape (type q s u) ((module X) : (q, s, u) t) = X.bin_query.shape
 
 let bin_state_shape (type q s u) ((module X) : (q, s, u) t) =

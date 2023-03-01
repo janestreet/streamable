@@ -25,13 +25,15 @@ module type Pipe_rpc = sig
   val description : _ t -> Rpc.Description.t
 
   val dispatch
-    :  ('q, 'r) t
+    :  ?metadata:Rpc_metadata.t
+    -> ('q, 'r) t
     -> Rpc.Connection.t
     -> 'q
     -> 'r Pipe.Reader.t Deferred.Or_error.t
 
   val implement
-    :  ('q, 'r) t
+    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+    -> ('q, 'r) t
     -> ('conn_state -> 'q -> 'r Pipe.Reader.t Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t
 
@@ -44,7 +46,8 @@ module type Pipe_rpc = sig
     (** [implement'] is like [implement rpc] except that it allows the server
         to control the conversion from [response]s to parts. *)
     val implement'
-      :  ('conn_state
+      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+      -> ('conn_state
           -> X.query
           -> X.Response.Intermediate.Part.t Pipe.Reader.t Pipe.Reader.t
                Deferred.Or_error.t)

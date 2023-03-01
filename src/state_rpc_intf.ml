@@ -29,13 +29,15 @@ module type State_rpc = sig
   val description : _ t -> Rpc.Description.t
 
   val dispatch
-    :  ('q, 's, 'u) t
+    :  ?metadata:Rpc_metadata.t
+    -> ('q, 's, 'u) t
     -> Rpc.Connection.t
     -> 'q
     -> ('s * 'u Pipe.Reader.t) Deferred.Or_error.t
 
   val implement
-    :  ('q, 's, 'u) t
+    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+    -> ('q, 's, 'u) t
     -> ('conn_state -> 'q -> ('s * 'u Pipe.Reader.t) Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t
 
@@ -145,7 +147,8 @@ module type State_rpc = sig
     (** [implement'] is like [implement rpc] except that it allows the server
         to control the conversion from the [state] and [update]s to parts. *)
     val implement'
-      :  ('conn_state
+      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+      -> ('conn_state
           -> X.query
           -> (X.State.Intermediate.Part.t Pipe.Reader.t
               * X.Update.Intermediate.Part.t Pipe.Reader.t Pipe.Reader.t)
@@ -153,7 +156,8 @@ module type State_rpc = sig
       -> 'conn_state Rpc.Implementation.t
 
     val implement_direct
-      :  ('conn_state
+      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+      -> ('conn_state
           -> X.query
           -> (X.State.Intermediate.Part.t, X.Update.Intermediate.Part.t) Direct_writer.t
           -> unit Deferred.Or_error.t)

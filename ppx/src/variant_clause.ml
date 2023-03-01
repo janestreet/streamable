@@ -172,7 +172,7 @@ let of_streamable_fun ~loc ~constructor_declarations =
     pexp_function ~loc cases
 ;;
 
-let maybe_match type_ =
+let maybe_match type_ (_ : Ctx.t) =
   Helpers.type_declaration_match
     type_
     ~payload:constructor_declarations

@@ -344,6 +344,18 @@ module type Of_list_rpc = functor (A : S_rpc) -> sig
   include S_rpc with type t := t
 end
 
+module type Of_nonempty_list = functor (A : S) -> sig
+  type t = A.t Nonempty_list.t
+
+  include S with type t := t
+end
+
+module type Of_nonempty_list_rpc = functor (A : S_rpc) -> sig
+  type t = A.t Nonempty_list.t
+
+  include S_rpc with type t := t
+end
+
 module type Of_option = functor (A : S) -> sig
   type t = A.t option
 
@@ -469,6 +481,8 @@ module type Main = sig
   module type Of_variant4_rpc         = Of_variant4_rpc
   module type Of_list                 = Of_list
   module type Of_list_rpc             = Of_list_rpc
+  module type Of_nonempty_list        = Of_nonempty_list
+  module type Of_nonempty_list_rpc    = Of_nonempty_list_rpc
   module type Of_option               = Of_option
   module type Of_option_rpc           = Of_option_rpc
   module type Of_result               = Of_result
@@ -520,6 +534,8 @@ module type Main = sig
   module Of_variant4_rpc : Of_variant4_rpc
   module Of_list : Of_list
   module Of_list_rpc : Of_list_rpc
+  module Of_nonempty_list : Of_nonempty_list
+  module Of_nonempty_list_rpc : Of_nonempty_list_rpc
   module Of_option : Of_option
   module Of_option_rpc : Of_option_rpc
   module Of_result : Of_result
@@ -598,6 +614,14 @@ module type Main = sig
     module Of_list_rpc : sig
       module V2 : Of_list_rpc
       module V3 : Of_list_rpc
+    end
+
+    module Of_nonempty_list : sig
+      module V1 : Of_nonempty_list
+    end
+
+    module Of_nonempty_list_rpc : sig
+      module V1 : Of_nonempty_list_rpc
     end
 
     module Of_map : sig
@@ -764,55 +788,57 @@ module type Main = sig
     *)
 
     module V1 : sig
-      module Fixpoint          = Fixpoint.V1
-      module Fixpoint_rpc      = Fixpoint_rpc.V1
-      module Of_atomic         = Of_atomic.V1
-      module Of_atomic_rpc     = Of_atomic_rpc.V1
-      module Of_fqueue         = Of_fqueue.V3
-      module Of_fqueue_rpc     = Of_fqueue_rpc.V3
-      module Of_hashtbl        = Of_hashtbl.V1
-      module Of_hashtbl_rpc    = Of_hashtbl_rpc.V1
-      module Of_list           = Of_list.V3
-      module Of_list_rpc       = Of_list_rpc.V3
-      module Of_map            = Of_map.V2
-      module Of_map_rpc        = Of_map_rpc.V2
-      module Of_option         = Of_option.V2
-      module Of_option_rpc     = Of_option_rpc.V2
-      module Of_result         = Of_result.V1
-      module Of_result_rpc     = Of_result_rpc.V1
-      module Of_sequence       = Of_sequence.V1
-      module Of_sequence_rpc   = Of_sequence_rpc.V1
-      module Of_set            = Of_set.V3
-      module Of_set_rpc        = Of_set_rpc.V3
-      module Of_sexpable       = Of_sexpable.V1
-      module Of_streamable     = Of_streamable.V1
-      module Of_streamable_rpc = Of_streamable_rpc.V1
-      module Of_total_map      = Of_total_map.V1
-      module Of_total_map_rpc  = Of_total_map_rpc.V1
-      module Of_tuple2         = Of_tuple2.V1
-      module Of_tuple2_rpc     = Of_tuple2_rpc.V1
-      module Of_tuple3         = Of_tuple3.V1
-      module Of_tuple3_rpc     = Of_tuple3_rpc.V1
-      module Of_tuple4         = Of_tuple4.V1
-      module Of_tuple4_rpc     = Of_tuple4_rpc.V1
-      module Of_tuple5         = Of_tuple5.V1
-      module Of_tuple5_rpc     = Of_tuple5_rpc.V1
-      module Of_tuple6         = Of_tuple6.V1
-      module Of_tuple6_rpc     = Of_tuple6_rpc.V1
-      module Of_tuple7         = Of_tuple7.V1
-      module Of_tuple7_rpc     = Of_tuple7_rpc.V1
-      module Of_tuple8         = Of_tuple8.V1
-      module Of_tuple8_rpc     = Of_tuple8_rpc.V1
-      module Of_tuple9         = Of_tuple9.V1
-      module Of_tuple9_rpc     = Of_tuple9_rpc.V1
-      module Of_variant2       = Of_variant2.V1
-      module Of_variant2_rpc   = Of_variant2_rpc.V1
-      module Of_variant3       = Of_variant3.V1
-      module Of_variant3_rpc   = Of_variant3_rpc.V1
-      module Of_variant4       = Of_variant4.V1
-      module Of_variant4_rpc   = Of_variant4_rpc.V1
-      module Remove_t          = Remove_t
-      module Remove_t_rpc      = Remove_t_rpc
+      module Fixpoint             = Fixpoint.V1
+      module Fixpoint_rpc         = Fixpoint_rpc.V1
+      module Of_atomic            = Of_atomic.V1
+      module Of_atomic_rpc        = Of_atomic_rpc.V1
+      module Of_fqueue            = Of_fqueue.V3
+      module Of_fqueue_rpc        = Of_fqueue_rpc.V3
+      module Of_hashtbl           = Of_hashtbl.V1
+      module Of_hashtbl_rpc       = Of_hashtbl_rpc.V1
+      module Of_list              = Of_list.V3
+      module Of_list_rpc          = Of_list_rpc.V3
+      module Of_map               = Of_map.V2
+      module Of_map_rpc           = Of_map_rpc.V2
+      module Of_nonempty_list     = Of_nonempty_list.V1
+      module Of_nonempty_list_rpc = Of_nonempty_list_rpc.V1
+      module Of_option            = Of_option.V2
+      module Of_option_rpc        = Of_option_rpc.V2
+      module Of_result            = Of_result.V1
+      module Of_result_rpc        = Of_result_rpc.V1
+      module Of_sequence          = Of_sequence.V1
+      module Of_sequence_rpc      = Of_sequence_rpc.V1
+      module Of_set               = Of_set.V3
+      module Of_set_rpc           = Of_set_rpc.V3
+      module Of_sexpable          = Of_sexpable.V1
+      module Of_streamable        = Of_streamable.V1
+      module Of_streamable_rpc    = Of_streamable_rpc.V1
+      module Of_total_map         = Of_total_map.V1
+      module Of_total_map_rpc     = Of_total_map_rpc.V1
+      module Of_tuple2            = Of_tuple2.V1
+      module Of_tuple2_rpc        = Of_tuple2_rpc.V1
+      module Of_tuple3            = Of_tuple3.V1
+      module Of_tuple3_rpc        = Of_tuple3_rpc.V1
+      module Of_tuple4            = Of_tuple4.V1
+      module Of_tuple4_rpc        = Of_tuple4_rpc.V1
+      module Of_tuple5            = Of_tuple5.V1
+      module Of_tuple5_rpc        = Of_tuple5_rpc.V1
+      module Of_tuple6            = Of_tuple6.V1
+      module Of_tuple6_rpc        = Of_tuple6_rpc.V1
+      module Of_tuple7            = Of_tuple7.V1
+      module Of_tuple7_rpc        = Of_tuple7_rpc.V1
+      module Of_tuple8            = Of_tuple8.V1
+      module Of_tuple8_rpc        = Of_tuple8_rpc.V1
+      module Of_tuple9            = Of_tuple9.V1
+      module Of_tuple9_rpc        = Of_tuple9_rpc.V1
+      module Of_variant2          = Of_variant2.V1
+      module Of_variant2_rpc      = Of_variant2_rpc.V1
+      module Of_variant3          = Of_variant3.V1
+      module Of_variant3_rpc      = Of_variant3_rpc.V1
+      module Of_variant4          = Of_variant4.V1
+      module Of_variant4_rpc      = Of_variant4_rpc.V1
+      module Remove_t             = Remove_t
+      module Remove_t_rpc         = Remove_t_rpc
     end
   end
 end

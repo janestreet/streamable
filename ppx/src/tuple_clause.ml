@@ -7,7 +7,7 @@ let tuple_core_types ~core_type =
   | _                     -> None
 ;;
 
-let maybe_match type_ =
+let maybe_match type_ (_ : Ctx.t) =
   let%bind core_type       = Type.match_core_type type_  in
   let%map tuple_core_types = tuple_core_types ~core_type in
   ({ children      = List.map tuple_core_types ~f:Type.core_type

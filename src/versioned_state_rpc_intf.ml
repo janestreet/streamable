@@ -21,7 +21,11 @@ module type Callee_converts = sig
   type update
 
   val implement_multi
-    :  ('conn_state -> query -> (state * update Pipe.Reader.t) Deferred.Or_error.t)
+    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
+    -> ('conn_state
+        -> version:int
+        -> query
+        -> (state * update Pipe.Reader.t) Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t list
 
   val name : string
@@ -41,7 +45,9 @@ module type Both_convert = sig
     -> (caller_state * caller_update Or_error.t Pipe.Reader.t) Deferred.Or_error.t
 
   val implement_multi
-    :  ('conn_state
+    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
+    -> ('conn_state
+        -> version:int
         -> callee_query
         -> (callee_state * callee_update Pipe.Reader.t) Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t list
@@ -86,7 +92,8 @@ module type Versioned_state_rpc = sig
         (** [implement'] is like [State_rpc.implement rpc] except that it allows the
             server to control the conversion from the [state] and [update]s to parts. *)
         val implement'
-          :  ('conn_state
+          :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
+          -> ('conn_state
               -> Version.query
               -> (Version.State.Intermediate.Part.t Pipe.Reader.t
                   * Version.Update.Intermediate.Part.t Pipe.Reader.t Pipe.Reader.t)
@@ -134,7 +141,8 @@ module type Versioned_state_rpc = sig
         (** [implement'] is like [State_rpc.implement rpc] except that it allows the
             server to control the conversion from the [state] and [update]s to parts. *)
         val implement'
-          :  ('conn_state
+          :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
+          -> ('conn_state
               -> Version.query
               -> (Version.State.Intermediate.Part.t Pipe.Reader.t
                   * Version.Update.Intermediate.Part.t Pipe.Reader.t Pipe.Reader.t)
@@ -195,7 +203,8 @@ module type Versioned_state_rpc = sig
         (** [implement'] is like [State_rpc.implement rpc] except that it allows the
             server to control the conversion from the [state] and [update]s to parts. *)
         val implement'
-          :  ('conn_state
+          :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
+          -> ('conn_state
               -> Version.query
               -> (Version.State.Intermediate.Part.t Pipe.Reader.t
                   * Version.Update.Intermediate.Part.t Pipe.Reader.t Pipe.Reader.t)

@@ -4,5 +4,5 @@ open! Import
 type t =
   { loc     : location
   ; rpc     : bool
-  ; version : int
+  ; version : Version.t
   }

@@ -22,11 +22,18 @@ module type Plain_rpc = sig
 
   type ('q, 'r) t
 
-  val description : _        t -> Rpc.Description.t
-  val dispatch    : ('q, 'r) t -> Rpc.Connection.t -> 'q -> 'r Deferred.Or_error.t
+  val description : _ t -> Rpc.Description.t
+
+  val dispatch
+    :  ?metadata:Rpc_metadata.t
+    -> ('q, 'r) t
+    -> Rpc.Connection.t
+    -> 'q
+    -> 'r Deferred.Or_error.t
 
   val implement
-    :  ('q, 'r) t
+    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+    -> ('q, 'r) t
     -> ('conn_state -> 'q -> 'r Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t
 
@@ -39,7 +46,8 @@ module type Plain_rpc = sig
     (** [implement'] is like [implement rpc] except that it allows the server
         to control the conversion from the [response] to parts. *)
     val implement'
-      :  ('conn_state
+      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+      -> ('conn_state
           -> X.query
           -> X.Response.Intermediate.Part.t Pipe.Reader.t Deferred.Or_error.t)
       -> 'conn_state Rpc.Implementation.t

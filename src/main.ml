@@ -238,7 +238,7 @@ module Stable = struct
       (* Practice shows that 2^18 is not too high, but (as of 2016-08-11) we shouldn't
          exceed 2^18 due to some limitations in writer.ml. *)
       let pack_threshold =
-        if am_running_inline_test
+        if Ppx_inline_test_lib.am_running
         then 25 (* something small enough to test both sides of easily *)
         else 131_072
       ;;
@@ -255,13 +255,13 @@ module Stable = struct
             let new_parts = Fqueue.enqueue buffered_parts xpart                 in
             let new_len   = buffered_len + X.Intermediate.Part.bin_size_t xpart in
             if new_len >= pack_threshold
-            then Yield (new_parts, init    )
-            else Skip  (new_parts, new_len))
+            then Yield { value = new_parts; state = init }
+            else Skip  { state = new_parts, new_len })
           ~inner_finished:fst
           ~finishing_step:(fun buffered_parts ->
             if Fqueue.is_empty buffered_parts
             then Done
-            else Yield (buffered_parts, Fqueue.empty))
+            else Yield { value = buffered_parts; state = Fqueue.empty })
       ;;
 
       let finalize = X.finalize
@@ -1756,6 +1756,36 @@ module Stable = struct
     module V3 (X : S) = Packed.V1 (V3_not_packed (X))
   end
 
+  module Of_nonempty_list_rpc = struct
+    module V1 (A : S_rpc) = struct
+      type t = A.t Nonempty_list.t
+
+      module M = struct
+        type nonrec t = t
+
+        let to_streamable = Nonempty_list.to_list
+        let of_streamable = Nonempty_list.of_list_exn
+      end
+
+      include Remove_t_rpc (Of_streamable_rpc.V1 (Of_list_rpc.V3 (A)) (M))
+    end
+  end
+
+  module Of_nonempty_list = struct
+    module V1 (A : S) = struct
+      type t = A.t Nonempty_list.t
+
+      module M = struct
+        type nonrec t = t
+
+        let to_streamable = Nonempty_list.to_list
+        let of_streamable = Nonempty_list.of_list_exn
+      end
+
+      include Remove_t (Of_streamable.V1 (Of_list.V3 (A)) (M))
+    end
+  end
+
   module Of_sexps = struct
     module V1_unpacked : S with type t = Sexp.t list = struct
       type t = Sexp.t list
@@ -2209,57 +2239,59 @@ module Stable = struct
   end
 
   module V1 = struct
-    module Fixpoint          = Fixpoint.V1
-    module Fixpoint_rpc      = Fixpoint_rpc.V1
-    module Of_atomic         = Of_atomic.V1
-    module Of_atomic_rpc     = Of_atomic_rpc.V1
-    module Of_fqueue         = Of_fqueue.V3
-    module Of_fqueue_rpc     = Of_fqueue_rpc.V3
-    module Of_hashtbl        = Of_hashtbl.V1
-    module Of_hashtbl_rpc    = Of_hashtbl_rpc.V1
-    module Of_list           = Of_list.V3
-    module Of_list_rpc       = Of_list_rpc.V3
-    module Of_map            = Of_map.V2
-    module Of_map_rpc        = Of_map_rpc.V2
-    module Of_option         = Of_option.V2
-    module Of_option_rpc     = Of_option_rpc.V2
-    module Of_result         = Of_result.V1
-    module Of_result_rpc     = Of_result_rpc.V1
-    module Of_sequence       = Of_sequence.V1
-    module Of_sequence_rpc   = Of_sequence_rpc.V1
-    module Of_set            = Of_set.V3
-    module Of_set_rpc        = Of_set_rpc.V3
-    module Of_sexpable       = Of_sexpable.V1
-    module Of_streamable     = Of_streamable.V1
-    module Of_streamable_rpc = Of_streamable_rpc.V1
-    module Of_total_map      = Of_total_map.V1
-    module Of_total_map_rpc  = Of_total_map_rpc.V1
-    module Of_tuple2         = Of_tuple2.V1
-    module Of_tuple2_rpc     = Of_tuple2_rpc.V1
-    module Of_tuple3         = Of_tuple3.V1
-    module Of_tuple3_rpc     = Of_tuple3_rpc.V1
-    module Of_tuple4         = Of_tuple4.V1
-    module Of_tuple4_rpc     = Of_tuple4_rpc.V1
-    module Of_tuple5         = Of_tuple5.V1
-    module Of_tuple5_rpc     = Of_tuple5_rpc.V1
-    module Of_tuple6         = Of_tuple6.V1
-    module Of_tuple6_rpc     = Of_tuple6_rpc.V1
-    module Of_tuple7         = Of_tuple7.V1
-    module Of_tuple7_rpc     = Of_tuple7_rpc.V1
-    module Of_tuple8         = Of_tuple8.V1
-    module Of_tuple8_rpc     = Of_tuple8_rpc.V1
-    module Of_tuple9         = Of_tuple9.V1
-    module Of_tuple9_rpc     = Of_tuple9_rpc.V1
-    module Of_variant2       = Of_variant2.V1
-    module Of_variant2_rpc   = Of_variant2_rpc.V1
-    module Of_variant3       = Of_variant3.V1
-    module Of_variant3_rpc   = Of_variant3_rpc.V1
-    module Of_variant4       = Of_variant4.V1
-    module Of_variant4_rpc   = Of_variant4_rpc.V1
-    module Packed            = Packed.V1
-    module Packed_rpc        = Packed_rpc.V1
-    module Remove_t          = Remove_t
-    module Remove_t_rpc      = Remove_t_rpc
+    module Fixpoint             = Fixpoint.V1
+    module Fixpoint_rpc         = Fixpoint_rpc.V1
+    module Of_atomic            = Of_atomic.V1
+    module Of_atomic_rpc        = Of_atomic_rpc.V1
+    module Of_fqueue            = Of_fqueue.V3
+    module Of_fqueue_rpc        = Of_fqueue_rpc.V3
+    module Of_hashtbl           = Of_hashtbl.V1
+    module Of_hashtbl_rpc       = Of_hashtbl_rpc.V1
+    module Of_list              = Of_list.V3
+    module Of_list_rpc          = Of_list_rpc.V3
+    module Of_map               = Of_map.V2
+    module Of_map_rpc           = Of_map_rpc.V2
+    module Of_nonempty_list     = Of_nonempty_list.V1
+    module Of_nonempty_list_rpc = Of_nonempty_list_rpc.V1
+    module Of_option            = Of_option.V2
+    module Of_option_rpc        = Of_option_rpc.V2
+    module Of_result            = Of_result.V1
+    module Of_result_rpc        = Of_result_rpc.V1
+    module Of_sequence          = Of_sequence.V1
+    module Of_sequence_rpc      = Of_sequence_rpc.V1
+    module Of_set               = Of_set.V3
+    module Of_set_rpc           = Of_set_rpc.V3
+    module Of_sexpable          = Of_sexpable.V1
+    module Of_streamable        = Of_streamable.V1
+    module Of_streamable_rpc    = Of_streamable_rpc.V1
+    module Of_total_map         = Of_total_map.V1
+    module Of_total_map_rpc     = Of_total_map_rpc.V1
+    module Of_tuple2            = Of_tuple2.V1
+    module Of_tuple2_rpc        = Of_tuple2_rpc.V1
+    module Of_tuple3            = Of_tuple3.V1
+    module Of_tuple3_rpc        = Of_tuple3_rpc.V1
+    module Of_tuple4            = Of_tuple4.V1
+    module Of_tuple4_rpc        = Of_tuple4_rpc.V1
+    module Of_tuple5            = Of_tuple5.V1
+    module Of_tuple5_rpc        = Of_tuple5_rpc.V1
+    module Of_tuple6            = Of_tuple6.V1
+    module Of_tuple6_rpc        = Of_tuple6_rpc.V1
+    module Of_tuple7            = Of_tuple7.V1
+    module Of_tuple7_rpc        = Of_tuple7_rpc.V1
+    module Of_tuple8            = Of_tuple8.V1
+    module Of_tuple8_rpc        = Of_tuple8_rpc.V1
+    module Of_tuple9            = Of_tuple9.V1
+    module Of_tuple9_rpc        = Of_tuple9_rpc.V1
+    module Of_variant2          = Of_variant2.V1
+    module Of_variant2_rpc      = Of_variant2_rpc.V1
+    module Of_variant3          = Of_variant3.V1
+    module Of_variant3_rpc      = Of_variant3_rpc.V1
+    module Of_variant4          = Of_variant4.V1
+    module Of_variant4_rpc      = Of_variant4_rpc.V1
+    module Packed               = Packed.V1
+    module Packed_rpc           = Packed_rpc.V1
+    module Remove_t             = Remove_t
+    module Remove_t_rpc         = Remove_t_rpc
   end
 
   module Latest = V1

@@ -5,5 +5,5 @@ let maybe_match =
   Helpers.polymorphic_primitive_or_module_match
     ~num_type_parameters:2
     ~primitive_name:(Some "result")
-    ~module_name:"Result"
+    ~first_module_name:"Result"
 ;;

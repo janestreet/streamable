@@ -17,15 +17,17 @@ module Make (X : X) = struct
   let match_on_submodule_form ~core_type =
     match core_type.ptyp_desc with
     | Ptyp_constr (longident_loc, type_parameters) ->
-      (match longident_loc.txt with
-       | Ldot (Ldot (atomic_longident, submodule), "t")
-         when String.(submodule = X.Submodule_form.name) ->
-         assert_arity_is_expected
-           ~longident_loc
-           ~actual_arity:(List.length type_parameters)
-           ~expected_arity:X.Submodule_form.arity;
-         Some (atomic_longident, X.Submodule_form.value_types ~type_parameters)
-       | _ -> None)
+      (match Helpers.if_module_dot_t_then_module core_type with
+       | None -> None
+       | Some module_longident_loc ->
+         (match Helpers.split_longident module_longident_loc.txt with
+          | `prefix (Some prefix), `last last when String.(last = X.Submodule_form.name) ->
+            assert_arity_is_expected
+              ~longident_loc
+              ~actual_arity:(List.length type_parameters)
+              ~expected_arity:X.Submodule_form.arity;
+            Some (prefix, X.Submodule_form.value_types ~type_parameters)
+          | _ -> None))
     | _ -> None
   ;;
 
@@ -36,7 +38,7 @@ module Make (X : X) = struct
          Helpers.longident_is_like_t
            longident_loc.txt
            ~primitive_name:None
-           ~module_name:X.Parameterized_form.name
+           ~first_module_name:X.Parameterized_form.name
        with
        | false -> None
        | true  ->
@@ -55,7 +57,7 @@ module Make (X : X) = struct
     | _ -> None
   ;;
 
-  let maybe_match type_ =
+  let maybe_match type_ (_ : Ctx.t) =
     let%bind core_type = Type.match_core_type type_ in
     let%map atomic_longident, children_types =
       Option.first_some

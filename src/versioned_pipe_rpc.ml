@@ -84,7 +84,11 @@ module Callee_converts = struct
     type implementation =
       { implement :
           's.
-            ('s -> Model.query -> Model.response Pipe.Reader.t Deferred.Or_error.t)
+            ?on_exception:Rpc.On_exception.t
+          -> ('s
+              -> version:int
+              -> Model.query
+              -> Model.response Pipe.Reader.t Deferred.Or_error.t)
           -> 's Rpc.Implementation.t
       }
 
@@ -92,9 +96,9 @@ module Callee_converts = struct
       Callers_rpc_version_table.create ~rpc_name:name
     ;;
 
-    let implement_multi f =
+    let implement_multi ?on_exception f =
       List.map (Callers_rpc_version_table.data registry) ~f:(fun { implement } ->
-        implement f)
+        implement ?on_exception f)
     ;;
 
     module Register (Version : sig
@@ -120,12 +124,17 @@ module Callee_converts = struct
 
       let implement
             (type s)
-            (f : s -> Model.query -> Model.response Pipe.Reader.t Deferred.Or_error.t)
+            ?on_exception
+            (f :
+               s
+             -> version:int
+             -> Model.query
+             -> Model.response Pipe.Reader.t Deferred.Or_error.t)
         =
-        Pipe_rpc.implement rpc (fun conn_state query ->
+        Pipe_rpc.implement ?on_exception rpc (fun conn_state query ->
           let open Deferred.Or_error.Let_syntax in
           let query = Version.model_of_query query in
-          let%bind response = f conn_state query in
+          let%bind response = f ~version conn_state query in
           let response = Pipe.map response ~f:Version.response_of_model in
           return response)
       ;;

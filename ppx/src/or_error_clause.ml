@@ -8,14 +8,14 @@ let type_parameter ~core_type =
        Helpers.longident_is_like_t
          longident_loc.txt
          ~primitive_name:None
-         ~module_name:"Or_error"
+         ~first_module_name:"Or_error"
      with
      | false -> None
      | true  -> Some type_parameter)
   | _ -> None
 ;;
 
-let maybe_match type_ =
+let maybe_match type_ { Ctx.version; _ } =
   let%bind core_type      = Type.match_core_type type_ in
   let%map  type_parameter = type_parameter ~core_type  in
   ({ children =
@@ -23,7 +23,9 @@ let maybe_match type_ =
        ; Core_type
            (Helpers.core_type_with_atomic_attribute
               ~loc:(Type.loc type_)
-              ~module_dot_t:"Core.Error.t")
+              ~module_dot_t:
+                (match version with
+                 | V1 -> "Core.Error.Stable.V2.t"))
        ]
    ; apply_functor =
        (fun ctx children ->

@@ -11,8 +11,8 @@ the `Streamable.Of_*` functors by hand.
 You can can think of `Streamable` as the runtime library counterpart
 of `ppx_streamable`.
 
-Usage
-------
+Basic Usage
+-------------
 
 <!--
 Preliminary opens
@@ -47,7 +47,7 @@ module T = struct
 end
 
 (* Verify that [T] satisfies [Streamable.S]. *)
-module _ : Streamable.S = T
+module _ : Streamable.S with type t = T.t = T
 ```
 
 If we instead want our type to satisfy the `Streamable.S_rpc`
@@ -64,8 +64,13 @@ module T_rpc = struct
 end
 
 (* Verify that [T_rpc] satisfies [Streamable.S_rpc]. *)
-module _ : Streamable.S_rpc = T_rpc
+module _ : Streamable.S_rpc with type t = T_rpc.t = T_rpc
 ```
+
+That's it!
+
+Atomic Serialization
+------------------------
 
 If we want to serialize our entire type atomically, we can add the
 `~atomic` argument.
@@ -81,7 +86,7 @@ module T_atomic = struct
 end
 
 (* Verify that [T_atomic] satisfies [Streamable.S_rpc]. *)
-module _ : Streamable.S_rpc = T_atomic
+module _ : Streamable.S_rpc with type t = T_atomic.t = T_atomic
 ```
 
 Note that this requires that the type derives `bin_io` (and `sexp`, if
@@ -106,7 +111,36 @@ module _ : S = T
 module _ : S_rpc = T_rpc
 ```
 
-That's it!
+Parameterized Types
+-----------------------
+
+We can also use `ppx_streamable` on parameterized types. Doing so produces a
+`Make_streamable` functor which accepts streamable implementations of type parameters to
+produce a streamable module.
+
+```ocaml
+module T_parameterized = struct
+  type 'a t = 'a option list [@@deriving streamable ~version:1]
+end
+
+(* Verify that [T_parameterized] has the expected interface. *)
+module _ : sig
+  type 'a t
+
+  module Make_streamable (A : Streamable.S) : Streamable.S with type t = A.t t
+end = T_parameterized
+```
+
+You can then use this parameterized type in other types that use `ppx_streamable` in a way
+that composes nicely.
+
+```ocaml
+module T_concrete = struct
+  type t = int T_parameterized.t [@@deriving streamable ~version:1]
+end
+
+module _ : S with type t = int T_parameterized.t = T_concrete
+```
 
 Attributes
 ------------
@@ -133,16 +167,45 @@ module T_without_atomic = struct
 end
 ```
 ```mdx-error
-Line 3, characters 15-20:
-Error: Signature mismatch:
-...
-       The value `finalize' is required but not provided
-       File "module_type.ml", line 102, characters 2-36: Expected declaration
-       The value `to_parts' is required but not provided
-       File "module_type.ml", line 101, characters 2-52: Expected declaration
-       The module `Intermediate' is required but not provided
-       File "module_type.ml", lines 90-99, characters 2-5:
-         Expected declaration
+Lines 2-7, characters 5-39:
+Error: The functor application is ill-typed.
+       These arguments:
+         Foo
+         Streamable.Stable.V1.Of_result(Streamable.Stable.V1.Of_atomic(Core.Float))(Streamable.Stable.V1.Of_atomic(Core.Error.Stable.V2))
+         Streamable.Stable.V1.Of_map(Core.String)(Streamable.Stable.V1.Of_atomic(Core.Bool))
+       do not match these parameters:
+         functor (A : Streamable__Main_intf.S) (B : Streamable__Main_intf.S)
+         (C : Streamable__Main_intf.S) -> ...
+       1. Modules do not match:
+            Foo :
+            sig
+              type t = int * string
+              val bin_shape_t : Bin_shape.t
+              val bin_size_t : t Bin_prot.Size.sizer
+              val bin_write_t : t Bin_prot.Write.writer
+              val bin_writer_t : t Bin_prot.Type_class.writer0
+              val __bin_read_t__ : (int -> t) Bin_prot.Read.reader
+              val bin_read_t : t Bin_prot.Read.reader
+              val bin_reader_t : t Bin_prot.Type_class.reader0
+              val bin_t : t Bin_prot.Type_class.t0
+              val t_of_sexp : Sexp.t -> t
+              val sexp_of_t : t -> Sexp.t
+            end
+          is not included in
+            Streamable__Main_intf.S
+          The module `Intermediate' is required but not provided
+          File "module_type.ml", lines 90-99, characters 2-5:
+            Expected declaration
+          The value `to_parts' is required but not provided
+          File "module_type.ml", line 101, characters 2-52:
+            Expected declaration
+          The value `finalize' is required but not provided
+          File "module_type.ml", line 102, characters 2-36:
+            Expected declaration
+       2. Module Streamable.Stable.V1.Of_result(Streamable.Stable.V1.Of_atomic(Core.Float))(Streamable.Stable.V1.Of_atomic(Core.Error.Stable.V2)) matches the expected module type
+            Streamable__Main_intf.S
+       3. Module Streamable.Stable.V1.Of_map(Core.String)(Streamable.Stable.V1.Of_atomic(Core.Bool)) matches the expected module type
+            Streamable__Main_intf.S
 ```
 
 However, one can force the type to be treated as an atomically
@@ -160,7 +223,7 @@ module T_with_atomic_field = struct
 end
 
 (* Verify that [T_with_atomic_field] satisfies [Streamable.S]. *)
-module _ : Streamable.S = T_with_atomic_field
+module _ : Streamable.S with type t = T_with_atomic_field.t = T_with_atomic_field
 ```
 
 Migrating from Hand-Written Functors to `ppx_streamable`
@@ -209,14 +272,15 @@ corresponding `Streamable.Of_*` functor call:
 | type                                     | functor                                                        |
 -------------------------------------------|----------------------------------------------------------------|
 | `'a Fqueue.t`                            | `Streamable.Of_fqueue`                                         |
-| `'a B.Table.t` or `('b, 'a) Hashtbl.t`   | `Streamable.Of_hashtbl`                               |
+| `'a B.Table.t` or `('b, 'a) Hashtbl.t`   | `Streamable.Of_hashtbl`                                        |
 | `'a list` or `'a List.t`                 | `Streamable.Of_list`                                           |
-| `'a B.Map.t` or `('b, 'a, 'c) Map.t`     | `Streamable.Of_map`                                     |
+| `'a B.Map.t` or `('b, 'a, 'c) Map.t`     | `Streamable.Of_map`                                            |
+| `'a Nonempty_list.t`                     | `Streamable.Of_nonempty_list`                                  |
 | `'a option` or `'a Option.t`             | `Streamable.Of_option`                                         |
-| `'a Or_error.t`                          | `Streamable.Of_result` (with `Core.Error.t` as the error type) |
+| `'a Or_error.t`                          | `Streamable.Of_result` (with `Core.Error.Stable.Vn.t` as the error type) |
 | `'a <primitive>`                         | `Streamable.Of_atomic (<Primitive>)`                           |
 | `<record>`                               | `Streamable.Of_streamable (Streamable.Of_tupleN (...))`<sup>[1](#footnote1)</sup>  |
-| `('a, 'b) result` or `('a, 'b) Result.t` | `Streamable.Of_result`                             |
+| `('a, 'b) result` or `('a, 'b) Result.t` | `Streamable.Of_result`                                         |
 | `a Sequence.t`                           | `Streamable.Of_sequence`                                       |
 | `A.Set.t`                                | `Streamable.Of_set`                                            |
 | `(a1 * ... * an)`                        | `Streamable.Of_tupleN`                                         |

@@ -33,18 +33,21 @@ module Make (X : S) = struct
 
   module M = State_rpc.Make (State_X)
 
-  let rpc          = M.rpc
-  let implement' f = M.implement' (plain_impl_to_state f)
+  let rpc                        = M.rpc
+  let implement' ?on_exception f = M.implement' ?on_exception (plain_impl_to_state f)
 end
 
 let description = State_rpc.description
 
-let dispatch rpc conn query =
-  let%bind response, pipe = State_rpc.dispatch rpc conn query in
+let dispatch ?metadata rpc conn query =
+  let%bind response, pipe = State_rpc.dispatch ?metadata rpc conn query in
   Pipe.close_read pipe;
   return response
 ;;
 
-let implement rpc f    = State_rpc.implement rpc (plain_impl_to_state f)
+let implement ?on_exception rpc f =
+  State_rpc.implement ?on_exception rpc (plain_impl_to_state f)
+;;
+
 let bin_query_shape    = State_rpc.bin_query_shape
 let bin_response_shape = State_rpc.bin_state_shape

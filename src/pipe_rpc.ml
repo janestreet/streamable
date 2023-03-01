@@ -29,28 +29,28 @@ module Make (X : S) = struct
 
   let rpc = M.rpc
 
-  let implement' f =
+  let implement' ?on_exception f =
     let f conn query =
       let%bind response = f conn query in
       return (State_X.State.to_parts () |> Pipe.of_sequence, response)
     in
-    M.implement' f
+    M.implement' ?on_exception f
   ;;
 end
 
 let description = State_rpc.description
 
-let dispatch rpc conn query =
-  let%bind (), response = State_rpc.dispatch rpc conn query in
+let dispatch ?metadata rpc conn query =
+  let%bind (), response = State_rpc.dispatch ?metadata rpc conn query in
   return response
 ;;
 
-let implement rpc f =
+let implement ?on_exception rpc f =
   let f conn query =
     let%bind response = f conn query in
     return ((), response)
   in
-  State_rpc.implement rpc f
+  State_rpc.implement ?on_exception rpc f
 ;;
 
 let bin_query_shape    = State_rpc.bin_query_shape

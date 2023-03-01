@@ -16,6 +16,3 @@ val loc                 : t -> location
 val human_readable_name : t -> label
 
 val match_core_type     : t -> core_type option
-
-(** Returns %{module_path} iff the [t] is of the form %{module_path}.t. *)
-val chop_t_suffix       : t -> longident option

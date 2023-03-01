@@ -28,4 +28,4 @@ module Match : sig
 end
 
 (** the clause itself is a function that attempts the pattern match *)
-type t = Type.t -> Match.t option
+type t = Type.t -> Ctx.t -> Match.t option

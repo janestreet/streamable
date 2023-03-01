@@ -55,7 +55,7 @@ let of_streamable_fun ~loc ~label_declarations =
   [%expr fun [%p tuple_pattern] -> [%e record_expression]]
 ;;
 
-let maybe_match type_ =
+let maybe_match type_ (_ : Ctx.t) =
   Helpers.type_declaration_match
     type_
     ~payload:label_declarations

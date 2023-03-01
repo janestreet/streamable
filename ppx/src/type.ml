@@ -23,13 +23,3 @@ let match_core_type = function
   | Type_declaration type_dec -> type_dec.ptype_manifest
   | Core_type core_type       -> Some core_type
 ;;
-
-let chop_t_suffix t =
-  let%bind.Option name_without_t =
-    match t with
-    | Type_declaration _  -> None
-    | Core_type core_type ->
-      String.chop_suffix (string_of_core_type core_type) ~suffix:".t"
-  in
-  Option.try_with (fun () -> Longident.parse name_without_t)
-;;

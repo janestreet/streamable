@@ -14,72 +14,177 @@ let version_arg_name = "version"
 module Signature = struct
   let args = Deriving.Args.(empty +> flag rpc_arg_name)
 
+  let generate_functor type_dec ~loc ~rpc =
+    let streamable_module_type = Helpers.streamable_module_type ~loc ~rpc in
+    let type_parameter_module_names =
+      List.mapi
+        type_dec.ptype_params
+        ~f:(fun index (type_parameter, (variance, injectivity)) ->
+          let module_name =
+            Helpers.module_name_for_type_parameter
+              (match type_parameter.ptyp_desc with
+               | Ptyp_var name -> `Ptyp_var name
+               | Ptyp_any      -> `Ptyp_any index
+               | _             ->
+                 raise_s
+                   [%message
+                     "Unexpected type for type parameter"
+                       [%here]
+                       (string_of_core_type type_parameter)])
+          in
+          (type_parameter, (variance, injectivity)), module_name)
+    in
+    let type_dec =
+      { type_dec with
+        ptype_params =
+          (* Replace all type parameters with the appropriate concrete types. *)
+          List.map
+            type_parameter_module_names
+            ~f:(fun ((type_parameter, (variance, injectivity)), module_name) ->
+              let core_type =
+                { type_parameter with
+                  ptyp_desc =
+                    Ptyp_constr
+                      (Loc.make ~loc (Longident.Ldot (Lident module_name, "t")), [])
+                }
+              in
+              core_type, (variance, injectivity))
+      }
+    in
+    let functor_ =
+      List.fold_right
+        type_parameter_module_names
+        ~init:
+          (pmty_with
+             ~loc
+             streamable_module_type
+             [ Pwith_type
+                 ( Loc.make ~loc (Longident.Lident "t")
+                 , { ptype_name       = Loc.make ~loc "t"
+                   ; ptype_params     = []
+                   ; ptype_cstrs      = []
+                   ; ptype_kind       = Ptype_abstract
+                   ; ptype_private    = Public
+                   ; ptype_manifest   = Some (core_type_of_type_declaration type_dec)
+                   ; ptype_attributes = []
+                   ; ptype_loc        = loc
+                   } )
+             ])
+        ~f:(fun (_, module_name) functor_ ->
+          pmty_functor
+            ~loc
+            (Named (Loc.make ~loc (Some module_name), streamable_module_type))
+            functor_)
+    in
+    psig_module
+      ~loc
+      (module_declaration
+         ~loc
+         ~name:(Loc.make ~loc (Some Helpers.make_streamable))
+         ~type_:functor_)
+  ;;
+
   let generate ~loc ~path:(_ : label) ((_ : rec_flag), type_decs) rpc =
     (* Verify that the type declaration is valid. *)
-    let (_ : type_declaration) = Helpers.get_the_one_and_only_type_t type_decs ~loc in
-    let module_type_name       = if rpc then "Streamable.S_rpc" else "Streamable.S" in
-    let module_type =
-      pmty_ident ~loc (Loc.make ~loc (Longident.parse module_type_name))
-    in
-    [ [%sigi: include [%m module_type] with type t := t] ]
+    let type_dec = Helpers.get_the_one_and_only_type_t type_decs ~loc in
+    match type_dec.ptype_params with
+    | _ :: _ -> [ generate_functor type_dec ~loc ~rpc ]
+    | []     ->
+      let module_type = Helpers.streamable_module_type ~loc ~rpc in
+      [ [%sigi: include [%m module_type] with type t := t] ]
   ;;
 end
 
 module Structure = struct
   let args =
     Deriving.Args.(
-      empty +> flag atomic_arg_name +> flag rpc_arg_name +> arg version_arg_name (eint __))
+      empty
+      +> flag atomic_arg_name
+      +> flag rpc_arg_name
+      +> arg version_arg_name (map1' ~f:Version.of_int_exn (eint __)))
   ;;
 
-  let all_patterns : Clause.t list =
-    [ Atomic_clause.maybe_match
-    ; Core_primitive_clause.maybe_match
+  let all_ordinary_clauses : Clause.t list =
+    [ Core_primitive_clause.maybe_match
     ; Fqueue_clause.maybe_match
     ; Hashtbl_clause.maybe_match
     ; List_clause.maybe_match
     ; Map_clause.maybe_match
+    ; Nonempty_list_clause.maybe_match
     ; Option_clause.maybe_match
     ; Or_error_clause.maybe_match
     ; Record_clause.maybe_match
     ; Result_clause.maybe_match
     ; Sequence_clause.maybe_match
     ; Set_clause.maybe_match
+    ; Sexp_clause.maybe_match
     ; Total_map_clause.maybe_match
     ; Tuple_clause.maybe_match
+    ; Type_parameter_clause.maybe_match
     ; Variant_clause.maybe_match
     ]
   ;;
 
-  let rec generate_from_clauses type_ ~rpc ~version =
-    let loc = Type.loc type_ in
+  (* We attempt to match clauses in distinct groups. In each group, we expect at most one
+     clause to match. If we fail to match any clauses from a given group, we move on to
+     the next one. The groups are defined in the following order:
+
+     (1) First, we just try applying [Atomic_clause]. If it matches, we should not recurse
+     any further.
+
+     (2) If that fails, we try applying all "ordinary" clauses.
+
+     (3) If that fails, we try applying [Parameterized_type_clause]. We consider this
+     separately since we'd otherwise have multiple clauses matching known parameterized
+     types like [_ Option.t] within the same group.
+
+     (4) Finally, we try applying [Module_dot_t_clause]. We consider this separately since
+     we'd otherwise have multiple clauses matching known types like [Sexp.t] within the
+     same group. *)
+  let clause_groups_in_descending_order_of_precedence =
+    [ [ Atomic_clause.maybe_match ]
+    ; all_ordinary_clauses
+    ; [ Parameterized_type_clause.maybe_match ]
+    ; [ Module_dot_t_clause.maybe_match ]
+    ]
+  ;;
+
+  let rec maybe_apply_clause maybe_match ~type_ ~loc ~rpc ~version =
+    match maybe_match type_ { Ctx.loc; rpc; version } with
+    | None -> None
+    | Some { Clause.Match.apply_functor; children } ->
+      (* We recognize the top-level structure of a type expression, now
+         recurse on any arguments it may have. *)
+      Some
+        (apply_functor
+           { loc; rpc; version }
+           (List.map children ~f:(generate_streamable_module ~rpc ~version)))
+
+  and find_at_most_one_matching_clause clause_group ~type_ ~loc ~rpc ~version =
     match
-      List.filter_map all_patterns ~f:(fun maybe_match ->
-        match maybe_match type_ with
-        | None -> None
-        | Some { apply_functor; children } ->
-          (* We recognize the top-level structure of a type expression, now
-             recurse on any arguments it may have. *)
-          Some
-            (apply_functor
-               { loc; rpc; version }
-               (List.map children ~f:(generate_from_clauses ~rpc ~version))))
+      List.filter_map clause_group ~f:(maybe_apply_clause ~type_ ~loc ~rpc ~version)
     with
-    | [ module_expr ] -> module_expr
-    | []              ->
-      (match Type.chop_t_suffix type_ with
-       (* If no matchers are satisfied, default to trying to use the module name itself
-          (without the [.t] suffix). *)
-       | Some longident -> pmod_ident ~loc (Loc.make ~loc longident)
-       | None           ->
-         Location.raise_errorf
-           ~loc
-           "Handling of type `%s' is unknown."
-           (Type.human_readable_name type_))
+    | [ module_expr ] -> Some module_expr
+    | []              -> None
     | (_ : module_expr list) ->
       Location.raise_errorf
         ~loc
-        "Multiple matchers satisfied type `%s'. This is likely a bug with \
-         [ppx_streamable]."
+        "Multiple matchers satisfied type `%s' for a given clause group. This is likely \
+         a bug with [ppx_streamable]."
+        (Type.human_readable_name type_)
+
+  and generate_streamable_module type_ ~rpc ~version =
+    let loc = Type.loc type_ in
+    match
+      List.find_map
+        clause_groups_in_descending_order_of_precedence
+        ~f:(find_at_most_one_matching_clause ~type_ ~loc ~rpc ~version)
+    with
+    | Some module_expr -> module_expr
+    | None             ->
+      Location.raise_errorf
+        ~loc
+        "Handling of type `%s' is unknown."
         (Type.human_readable_name type_)
   ;;
 
@@ -168,6 +273,83 @@ module Structure = struct
       ~arguments:[ pmod_structure ~loc [ type_t_with_deriving ] ]
   ;;
 
+  let rec generate_for_one_type type_dec ~loc ~atomic ~rpc ~version =
+    match type_dec.ptype_params with
+    | _ :: _ -> [ generate_functor type_dec ~atomic ~loc ~rpc ~version ]
+    | []     ->
+      let module_expr =
+        match atomic with
+        | true  -> generate_atomic type_dec ~loc ~rpc ~version
+        | false -> generate_streamable_module (Type_declaration type_dec) ~rpc ~version
+      in
+      [ [%stri
+        include
+          [%m
+            Helpers.apply_streamable_dot
+              { loc; rpc; version }
+              ~functor_name:"Remove_t"
+              ~arguments:[ module_expr ]]]
+      ]
+
+  and generate_functor type_dec ~loc ~atomic ~rpc ~version =
+    let streamable_module_type = Helpers.streamable_module_type ~loc ~rpc in
+    let type_parameter_module_names =
+      List.mapi type_dec.ptype_params ~f:(fun index (type_parameter, _) ->
+        Helpers.module_name_for_type_parameter
+          (match type_parameter.ptyp_desc with
+           | Ptyp_var name -> `Ptyp_var name
+           | Ptyp_any      -> `Ptyp_any index
+           | _             ->
+             raise_s
+               [%message
+                 "Unexpected type for type parameter"
+                   [%here]
+                   (string_of_core_type type_parameter)]))
+    in
+    let functor_body =
+      let type_nonrec_t =
+        let concrete_t =
+          ptyp_constr
+            ~loc
+            (Loc.make ~loc (lident "t"))
+            (List.map type_parameter_module_names ~f:(fun module_name ->
+               ptyp_constr
+                 ~loc
+                 (Loc.make ~loc (Longident.Ldot (Lident module_name, "t")))
+                 []))
+        in
+        [%stri type nonrec t = [%t concrete_t]]
+      in
+      let include_streamable =
+        (* Generate the body of the functor by calling [generate_for_one_type] on this
+           type with all type parameters erased. *)
+        generate_for_one_type
+          { type_dec with ptype_params = [] }
+          ~loc
+          ~atomic
+          ~rpc
+          ~version
+      in
+      pmod_structure ~loc (type_nonrec_t :: include_streamable)
+    in
+    let functor_ =
+      List.fold_right
+        type_parameter_module_names
+        ~init:functor_body
+        ~f:(fun module_name functor_ ->
+          pmod_functor
+            ~loc
+            (Named (Loc.make ~loc (Some module_name), streamable_module_type))
+            functor_)
+    in
+    pstr_module
+      ~loc
+      (module_binding
+         ~loc
+         ~name:(Loc.make ~loc (Some Helpers.make_streamable))
+         ~expr:functor_)
+  ;;
+
   let generate ~loc ~path:(_ : label) ((_ : rec_flag), type_decs) atomic rpc version =
     let version =
       match version with
@@ -181,19 +363,7 @@ module Structure = struct
                value)"]
     in
     let type_dec = Helpers.get_the_one_and_only_type_t type_decs ~loc in
-    let module_expr =
-      match atomic with
-      | true  -> generate_atomic type_dec ~loc ~rpc ~version
-      | false -> generate_from_clauses (Type_declaration type_dec) ~rpc ~version
-    in
-    [ [%stri
-      include
-        [%m
-          Helpers.apply_streamable_dot
-            { loc; rpc; version }
-            ~functor_name:"Remove_t"
-            ~arguments:[ module_expr ]]]
-    ]
+    generate_for_one_type type_dec ~loc ~atomic ~rpc ~version
   ;;
 end
 

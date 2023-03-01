@@ -1,15 +1,5 @@
 open! Core
 
-module Type_parameters_are_unsupported = struct
-  type _ t = int [@@deriving streamable ~version:1]
-end
-
-[%%expect
-  {|
-Line _, characters _-_:
-Error: ppx_streamable: type parameters are not supported.
-|}]
-
 module Multiple_types_are_unsupported = struct
   type t = int
   and u = string [@@deriving streamable ~version:1]
@@ -65,13 +55,13 @@ Line _, characters _-_:
 Error: integer expected
 |}]
 
-module Handling_of_certain_compound_types_is_unknown = struct
+module Handling_of_certain_parameterized_types_is_unknown = struct
   type t = int Queue.t [@@deriving streamable ~version:1]
 end
 
 [%%expect {|
 Line _, characters _-_:
-Error: Handling of type `int Queue.t' is unknown.
+Error: Unbound module Queue.Make_streamable
 |}]
 
 module Atomic_attribute_is_not_used_on_hashtbl_key = struct
@@ -231,4 +221,14 @@ end
   {|
 Line _, characters _-_:
 Error: ppx_streamable: The following derivers must appear before streamable ~atomic: bin_io, sexp.
+|}]
+
+module Unknown_version = struct
+  type t = int Or_error.t [@@deriving streamable ~version:2]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: Unknown ppx_streamable version: 2. The supported versions are: {1}
 |}]

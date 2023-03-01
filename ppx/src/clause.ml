@@ -8,4 +8,4 @@ module Match = struct
     }
 end
 
-type t = Type.t -> Match.t option
+type t = Type.t -> Ctx.t -> Match.t option
