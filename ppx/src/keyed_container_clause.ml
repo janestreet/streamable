@@ -21,7 +21,8 @@ module Make (X : X) = struct
        | None -> None
        | Some module_longident_loc ->
          (match Helpers.split_longident module_longident_loc.txt with
-          | `prefix (Some prefix), `last last when String.(last = X.Submodule_form.name) ->
+          | `prefix (Some prefix), `last last when String.(last = X.Submodule_form.name)
+            ->
             assert_arity_is_expected
               ~longident_loc
               ~actual_arity:(List.length type_parameters)

@@ -209,6 +209,36 @@ module Stable = struct
       Add_sexp.V1 (Of_streamable_rpc.V1 (Streamable) (X)) (Streamable.Intermediate.Part)
   end
 
+  module Checked (Limit : sig
+      val max_intermediate_part_bin_size : int
+      val here : Source_code_position.t
+    end)
+      (X : S) : S with type t = X.t = struct
+    include X
+
+    let here              = Limit.here
+    let max_part_bin_size = Limit.max_intermediate_part_bin_size
+
+    let to_parts t =
+      X.to_parts t
+      |> Sequence.mapi ~f:(fun part_index part ->
+        let the_part_bin_size = Intermediate.Part.bin_size_t part in
+        if the_part_bin_size > max_part_bin_size
+        then
+          raise_s
+            [%message
+              "Streamable intermediate part exceeded size threshold.  Depending on \
+               the max size, this might indicate that serialization or transmission \
+               will fail."
+                (here : Source_code_position.t)
+                (part_index : int)
+                (the_part_bin_size : int)
+                (max_part_bin_size : int)
+                (Intermediate.Part.bin_shape_t : Bin_shape.t)];
+        part)
+    ;;
+  end
+
   module Packed_rpc = struct
     module V1 (X : S_rpc) : sig
       type t = X.t
@@ -2288,6 +2318,7 @@ module Stable = struct
     module Of_variant3_rpc      = Of_variant3_rpc.V1
     module Of_variant4          = Of_variant4.V1
     module Of_variant4_rpc      = Of_variant4_rpc.V1
+    module Checked              = Checked
     module Packed               = Packed.V1
     module Packed_rpc           = Packed_rpc.V1
     module Remove_t             = Remove_t

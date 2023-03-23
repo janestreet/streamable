@@ -43,17 +43,11 @@ module type Of_atomic_rpc = functor
    end)
   -> S_rpc with type t = A.t
 
-module type Of_map = functor (Key : Stable) (Data : S) -> sig
-  type t = (Key.t, Data.t, Key.comparator_witness) Map.t
+module type Of_map = functor (Key : Stable) (Data : S) ->
+  S with type t = (Key.t, Data.t, Key.comparator_witness) Map.t
 
-  include S with type t := t
-end
-
-module type Of_map_rpc = functor (Key : Stable_without_of_sexp) (Data : S_rpc) -> sig
-  type t = (Key.t, Data.t, Key.comparator_witness) Map.t
-
-  include S_rpc with type t := t
-end
+module type Of_map_rpc = functor (Key : Stable_without_of_sexp) (Data : S_rpc) ->
+  S_rpc with type t = (Key.t, Data.t, Key.comparator_witness) Map.t
 
 module type Of_total_map = functor (Key : Total_map.Key_with_witnesses) (Data : S) ->
   S
@@ -74,11 +68,7 @@ module type Of_hashtbl = functor
      include Hashtbl.Key with type t := t
    end)
   (Data : S)
-  -> sig
-    type t = (Key.t, Data.t) Hashtbl.t
-
-    include S with type t := t
-  end
+  -> S with type t = (Key.t, Data.t) Hashtbl.t
 
 module type Of_hashtbl_rpc = functor
   (Key : sig
@@ -86,65 +76,32 @@ module type Of_hashtbl_rpc = functor
      include Hashtbl.Key_plain with type t := t
    end)
   (Data : S_rpc)
-  -> sig
-    type t = (Key.t, Data.t) Hashtbl.t
+  -> S_rpc with type t = (Key.t, Data.t) Hashtbl.t
 
-    include S_rpc with type t := t
-  end
+module type Of_set = functor (Key : Stable) ->
+  S with type t = (Key.t, Key.comparator_witness) Set.t
 
-module type Of_set = functor (Key : Stable) -> sig
-  type t = (Key.t, Key.comparator_witness) Set.t
+module type Of_set_rpc = functor (Key : Stable_without_of_sexp) ->
+  S_rpc with type t = (Key.t, Key.comparator_witness) Set.t
 
-  include S with type t := t
-end
+module type Of_tuple2     = functor (A : S    ) (B : S    ) -> S with type t = A.t * B.t
 
-module type Of_set_rpc = functor (Key : Stable_without_of_sexp) -> sig
-  type t = (Key.t, Key.comparator_witness) Set.t
+module type Of_tuple2_rpc = functor (A : S_rpc) (B : S_rpc) ->
+  S_rpc with type t = A.t * B.t
 
-  include S_rpc with type t := t
-end
+module type Of_tuple3     = functor (A : S) (B : S) (C : S) -> S with type t = A.t * B.t * C.t
 
-module type Of_tuple2 = functor (A : S) (B : S) -> sig
-  type t = A.t * B.t
+module type Of_tuple3_rpc = functor (A : S_rpc) (B : S_rpc) (C : S_rpc) ->
+  S_rpc with type t = A.t * B.t * C.t
 
-  include S with type t := t
-end
+module type Of_tuple4 = functor (A : S) (B : S) (C : S) (D : S) ->
+  S with type t = A.t * B.t * C.t * D.t
 
-module type Of_tuple2_rpc = functor (A : S_rpc) (B : S_rpc) -> sig
-  type t = A.t * B.t
+module type Of_tuple4_rpc = functor (A : S_rpc) (B : S_rpc) (C : S_rpc) (D : S_rpc) ->
+  S_rpc with type t = A.t * B.t * C.t * D.t
 
-  include S_rpc with type t := t
-end
-
-module type Of_tuple3 = functor (A : S) (B : S) (C : S) -> sig
-  type t = A.t * B.t * C.t
-
-  include S with type t := t
-end
-
-module type Of_tuple3_rpc = functor (A : S_rpc) (B : S_rpc) (C : S_rpc) -> sig
-  type t = A.t * B.t * C.t
-
-  include S_rpc with type t := t
-end
-
-module type Of_tuple4 = functor (A : S) (B : S) (C : S) (D : S) -> sig
-  type t = A.t * B.t * C.t * D.t
-
-  include S with type t := t
-end
-
-module type Of_tuple4_rpc = functor (A : S_rpc) (B : S_rpc) (C : S_rpc) (D : S_rpc) -> sig
-  type t = A.t * B.t * C.t * D.t
-
-  include S_rpc with type t := t
-end
-
-module type Of_tuple5 = functor (A : S) (B : S) (C : S) (D : S) (E : S) -> sig
-  type t = A.t * B.t * C.t * D.t * E.t
-
-  include S with type t := t
-end
+module type Of_tuple5 = functor (A : S) (B : S) (C : S) (D : S) (E : S) ->
+  S with type t = A.t * B.t * C.t * D.t * E.t
 
 module type Of_tuple5_rpc = functor
   (A : S_rpc)
@@ -152,17 +109,10 @@ module type Of_tuple5_rpc = functor
   (C : S_rpc)
   (D : S_rpc)
   (E : S_rpc)
-  -> sig
-    type t = A.t * B.t * C.t * D.t * E.t
+  -> S_rpc with type t = A.t * B.t * C.t * D.t * E.t
 
-    include S_rpc with type t := t
-  end
-
-module type Of_tuple6 = functor (A : S) (B : S) (C : S) (D : S) (E : S) (F : S) -> sig
-  type t = A.t * B.t * C.t * D.t * E.t * F.t
-
-  include S with type t := t
-end
+module type Of_tuple6 = functor (A : S) (B : S) (C : S) (D : S) (E : S) (F : S) ->
+  S with type t = A.t * B.t * C.t * D.t * E.t * F.t
 
 module type Of_tuple6_rpc = functor
   (A : S_rpc)
@@ -171,25 +121,10 @@ module type Of_tuple6_rpc = functor
   (D : S_rpc)
   (E : S_rpc)
   (F : S_rpc)
-  -> sig
-    type t = A.t * B.t * C.t * D.t * E.t * F.t
+  -> S_rpc with type t = A.t * B.t * C.t * D.t * E.t * F.t
 
-    include S_rpc with type t := t
-  end
-
-module type Of_tuple7 = functor
-  (A : S)
-  (B : S)
-  (C : S)
-  (D : S)
-  (E : S)
-  (F : S)
-  (G : S)
-  -> sig
-    type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t
-
-    include S with type t := t
-  end
+module type Of_tuple7 = functor (A : S) (B : S) (C : S) (D : S) (E : S) (F : S) (G : S) ->
+  S with type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t
 
 module type Of_tuple7_rpc = functor
   (A : S_rpc)
@@ -199,11 +134,7 @@ module type Of_tuple7_rpc = functor
   (E : S_rpc)
   (F : S_rpc)
   (G : S_rpc)
-  -> sig
-    type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t
-
-    include S_rpc with type t := t
-  end
+  -> S_rpc with type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t
 
 module type Of_tuple8 = functor
   (A : S)
@@ -214,11 +145,7 @@ module type Of_tuple8 = functor
   (F : S)
   (G : S)
   (H : S)
-  -> sig
-    type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t
-
-    include S with type t := t
-  end
+  -> S with type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t
 
 module type Of_tuple8_rpc = functor
   (A : S_rpc)
@@ -229,11 +156,7 @@ module type Of_tuple8_rpc = functor
   (F : S_rpc)
   (G : S_rpc)
   (H : S_rpc)
-  -> sig
-    type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t
-
-    include S_rpc with type t := t
-  end
+  -> S_rpc with type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t
 
 module type Of_tuple9 = functor
   (A : S)
@@ -245,11 +168,7 @@ module type Of_tuple9 = functor
   (G : S)
   (H : S)
   (I : S)
-  -> sig
-    type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t * I.t
-
-    include S with type t := t
-  end
+  -> S with type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t * I.t
 
 module type Of_tuple9_rpc = functor
   (A : S_rpc)
@@ -261,150 +180,76 @@ module type Of_tuple9_rpc = functor
   (G : S_rpc)
   (H : S_rpc)
   (I : S_rpc)
-  -> sig
-    type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t * I.t
+  -> S_rpc with type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t * I.t
 
-    include S_rpc with type t := t
-  end
+module type Of_variant2 = functor (A : S) (B : S) ->
+  S
+  with type t =
+         [ `A of A.t
+         | `B of B.t
+         ]
 
-module type Of_variant2 = functor (A : S) (B : S) -> sig
-  type t =
-    [ `A of A.t
-    | `B of B.t
-    ]
+module type Of_variant2_rpc = functor (A : S_rpc) (B : S_rpc) ->
+  S_rpc
+  with type t =
+         [ `A of A.t
+         | `B of B.t
+         ]
 
-  include S with type t := t
-end
+module type Of_variant3 = functor (A : S) (B : S) (C : S) ->
+  S
+  with type t =
+         [ `A of A.t
+         | `B of B.t
+         | `C of C.t
+         ]
 
-module type Of_variant2_rpc = functor (A : S_rpc) (B : S_rpc) -> sig
-  type t =
-    [ `A of A.t
-    | `B of B.t
-    ]
+module type Of_variant3_rpc = functor (A : S_rpc) (B : S_rpc) (C : S_rpc) ->
+  S_rpc
+  with type t =
+         [ `A of A.t
+         | `B of B.t
+         | `C of C.t
+         ]
 
-  include S_rpc with type t := t
-end
+module type Of_variant4 = functor (A : S) (B : S) (C : S) (D : S) ->
+  S
+  with type t =
+         [ `A of A.t
+         | `B of B.t
+         | `C of C.t
+         | `D of D.t
+         ]
 
-module type Of_variant3 = functor (A : S) (B : S) (C : S) -> sig
-  type t =
-    [ `A of A.t
-    | `B of B.t
-    | `C of C.t
-    ]
+module type Of_variant4_rpc = functor (A : S_rpc) (B : S_rpc) (C : S_rpc) (D : S_rpc) ->
+  S_rpc
+  with type t =
+         [ `A of A.t
+         | `B of B.t
+         | `C of C.t
+         | `D of D.t
+         ]
 
-  include S with type t := t
-end
+module type Of_list          = functor (A : S    ) -> S     with type t = A.t list
+module type Of_list_rpc      = functor (A : S_rpc) -> S_rpc with type t = A.t list
+module type Of_nonempty_list = functor (A : S    ) -> S     with type t = A.t Nonempty_list.t
 
-module type Of_variant3_rpc = functor (A : S_rpc) (B : S_rpc) (C : S_rpc) -> sig
-  type t =
-    [ `A of A.t
-    | `B of B.t
-    | `C of C.t
-    ]
+module type Of_nonempty_list_rpc = functor (A : S_rpc) ->
+  S_rpc with type t = A.t Nonempty_list.t
 
-  include S_rpc with type t := t
-end
+module type Of_option     = functor (A : S) -> S with type t = A.t option
+module type Of_option_rpc = functor (A : S_rpc) -> S_rpc with type t = A.t option
+module type Of_result     = functor (A : S) (B : S) -> S with type t = (A.t, B.t) result
 
-module type Of_variant4 = functor (A : S) (B : S) (C : S) (D : S) -> sig
-  type t =
-    [ `A of A.t
-    | `B of B.t
-    | `C of C.t
-    | `D of D.t
-    ]
+module type Of_result_rpc = functor (A : S_rpc) (B : S_rpc) ->
+  S_rpc with type t = (A.t, B.t) result
 
-  include S with type t := t
-end
+module type Of_fqueue       = functor (A : S) -> S with type t = A.t Fqueue.t
+module type Of_fqueue_rpc   = functor (A : S_rpc) -> S_rpc with type t = A.t Fqueue.t
+module type Of_sequence     = functor (A : S) -> S with type t = A.t Sequence.t
+module type Of_sequence_rpc = functor (A : S_rpc) -> S_rpc with type t = A.t Sequence.t
 
-module type Of_variant4_rpc = functor
-  (A : S_rpc)
-  (B : S_rpc)
-  (C : S_rpc)
-  (D : S_rpc)
-  -> sig
-    type t =
-      [ `A of A.t
-      | `B of B.t
-      | `C of C.t
-      | `D of D.t
-      ]
-
-    include S_rpc with type t := t
-  end
-
-module type Of_list = functor (A : S) -> sig
-  type t = A.t list
-
-  include S with type t := t
-end
-
-module type Of_list_rpc = functor (A : S_rpc) -> sig
-  type t = A.t list
-
-  include S_rpc with type t := t
-end
-
-module type Of_nonempty_list = functor (A : S) -> sig
-  type t = A.t Nonempty_list.t
-
-  include S with type t := t
-end
-
-module type Of_nonempty_list_rpc = functor (A : S_rpc) -> sig
-  type t = A.t Nonempty_list.t
-
-  include S_rpc with type t := t
-end
-
-module type Of_option = functor (A : S) -> sig
-  type t = A.t option
-
-  include S with type t := t
-end
-
-module type Of_option_rpc = functor (A : S_rpc) -> sig
-  type t = A.t option
-
-  include S_rpc with type t := t
-end
-
-module type Of_result = functor (A : S) (B : S) -> sig
-  type t = (A.t, B.t) result
-
-  include S with type t := t
-end
-
-module type Of_result_rpc = functor (A : S_rpc) (B : S_rpc) -> sig
-  type t = (A.t, B.t) result
-
-  include S_rpc with type t := t
-end
-
-module type Of_fqueue = functor (A : S) -> sig
-  type t = A.t Fqueue.t
-
-  include S with type t := t
-end
-
-module type Of_fqueue_rpc = functor (A : S_rpc) -> sig
-  type t = A.t Fqueue.t
-
-  include S_rpc with type t := t
-end
-
-module type Of_sequence = functor (A : S) -> sig
-  type t = A.t Sequence.t
-
-  include S with type t := t
-end
-
-module type Of_sequence_rpc = functor (A : S_rpc) -> sig
-  type t = A.t Sequence.t
-
-  include S_rpc with type t := t
-end
-
-module type Of_streamable = functor
+module type Of_streamable   = functor
   (Streamable : S)
   (X : sig
      type t
@@ -437,19 +282,22 @@ module type Fixpoint_rpc = functor
   (F : functor (X : S_rpc with type t = T.t) -> S_rpc with type t = T.t)
   -> S_rpc with type t = T.t
 
-module type Packed = functor (X : S) -> sig
-  type t = X.t
+(** [Checked] is a wrapper functor for finding places that are producing binio values that
+    are too large.  The output behaves exactly like the input, except that [to_parts] will
+    raise if it ever produces an intermediate part whose binio size exceeds
+    [max_intermediate_part_bin_size]. *)
+module type Checked = functor
+  (Limit : sig
+     val max_intermediate_part_bin_size : int
+     val here : Source_code_position.t
+   end)
+  (X : S)
+  -> S with type t = X.t
 
-  include S with type t := t
-end
+module type Packed     = functor (X : S) -> S with type t = X.t
+module type Packed_rpc = functor (X : S_rpc) -> S_rpc with type t = X.t
 
-module type Packed_rpc = functor (X : S_rpc) -> sig
-  type t = X.t
-
-  include S_rpc with type t := t
-end
-
-module type Main = sig
+module type Main       = sig
   module type S                       = S
   module type S_rpc                   = S_rpc
   module type S_rpc_with_sexp_of_part = S_rpc_with_sexp_of_part
@@ -495,6 +343,7 @@ module type Main = sig
   module type Of_streamable_rpc       = Of_streamable_rpc
   module type Fixpoint                = Fixpoint
   module type Fixpoint_rpc            = Fixpoint_rpc
+  module type Checked                 = Checked
   module type Packed                  = Packed
   module type Packed_rpc              = Packed_rpc
 
@@ -549,6 +398,7 @@ module type Main = sig
   module Of_sexpable : Of_sexpable
   module Fixpoint : Fixpoint
   module Fixpoint_rpc : Fixpoint_rpc
+  module Checked : Checked
   module Packed : Packed
   module Packed_rpc : Packed_rpc
   module Remove_t_rpc = Remove_t.F_rpc
@@ -563,6 +413,8 @@ module type Main = sig
     module Remove_t_rpc = Remove_t_rpc
 
     (** Individually-accessible stable versions of each functor. *)
+
+    module Checked : Checked
 
     module Packed : sig
       module V1 : Packed

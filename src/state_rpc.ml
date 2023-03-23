@@ -226,8 +226,7 @@ module Make (X : S) = struct
             (match Pipe.read_now' update_pipes with
              | `Eof | `Nothing_available -> ()
              | `Ok queue                 ->
-               Queue.iter queue ~f:(fun update_pipe ->
-                 Pipe.close_read update_pipe));
+               Queue.iter queue ~f:(fun update_pipe -> Pipe.close_read update_pipe));
             Pipe.close_read update_pipes);
           let%bind () =
             write_msg w state_pipe ~constructor:(fun x -> Response.State x)
@@ -242,8 +241,8 @@ module Make (X : S) = struct
         let%bind state, updates = f c q in
         return
           ( State.to_parts state |> Pipe.of_sequence
-          , Pipe.map updates ~f:(fun update ->
-              Update.to_parts update |> Pipe.of_sequence) ))
+          , Pipe.map updates ~f:(fun update -> Update.to_parts update |> Pipe.of_sequence)
+          ))
     ;;
 
     let read_state r =
