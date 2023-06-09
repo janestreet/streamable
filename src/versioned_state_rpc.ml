@@ -19,18 +19,23 @@ module Caller_converts = struct
     type dispatch_fun =
       Rpc.Connection.t
       -> Model.query
-      -> (Model.state * Model.update Or_error.t Pipe.Reader.t) Deferred.Or_error.t
+      -> (Model.state * Model.update Or_error.t Pipe.Reader.t) Or_error.t
+           Deferred.Or_error.t
 
     let registry : dispatch_fun Callers_rpc_version_table.t =
       Callers_rpc_version_table.create ~rpc_name:name
     ;;
 
-    let dispatch_multi conn_with_menu query =
+    let dispatch_multi' conn_with_menu query =
       let conn = Versioned_rpc.Connection_with_menu.connection conn_with_menu in
       let menu = Versioned_rpc.Connection_with_menu.menu       conn_with_menu in
       match Callers_rpc_version_table.lookup_most_recent registry ~callee_menu:menu with
       | Error e     -> return (Error e)
       | Ok dispatch -> dispatch conn query
+    ;;
+
+    let dispatch_multi conn_with_menu query =
+      dispatch_multi' conn_with_menu query |> Deferred.map ~f:Or_error.join
     ;;
 
     module Register (Version : sig
@@ -59,19 +64,21 @@ module Caller_converts = struct
 
       let version = Version.version
 
-      let dispatch conn query =
+      let dispatch' conn query =
         let open Deferred.Or_error.Let_syntax in
         let query = Version.query_of_model query in
-        let%bind state, updates = State_rpc.dispatch rpc conn query in
-        let state = Version.model_of_state state in
-        let updates =
-          Pipe.map updates ~f:(fun update ->
-            Or_error.try_with (fun () -> Version.model_of_update update))
-        in
-        return (state, updates)
+        let%bind server_response = State_rpc.dispatch' rpc conn query in
+        Or_error.map server_response ~f:(fun (state, updates) ->
+          let state = Version.model_of_state state in
+          let updates =
+            Pipe.map updates ~f:(fun update ->
+              Or_error.try_with (fun () -> Version.model_of_update update))
+          in
+          state, updates)
+        |> return
       ;;
 
-      let () = Callers_rpc_version_table.add_exn registry ~version dispatch
+      let () = Callers_rpc_version_table.add_exn registry ~version dispatch'
     end
   end
 end
@@ -230,6 +237,7 @@ module Both_convert = struct
     end
 
     let dispatch_multi  = Caller.dispatch_multi
+    let dispatch_multi' = Caller.dispatch_multi'
     let implement_multi = Callee.implement_multi
   end
 end

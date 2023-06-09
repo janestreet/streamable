@@ -224,7 +224,14 @@ module Stable = struct
       |> Sequence.mapi ~f:(fun part_index part ->
         let the_part_bin_size = Intermediate.Part.bin_size_t part in
         if the_part_bin_size > max_part_bin_size
-        then
+        then (
+          let intermediate_part_bin_shape : Sexp.t =
+            (* Bin_shape.t sexps contain a global counter on bin shapes, which is too
+               flaky to display in test output *)
+            if am_running_test
+            then [%sexp "{omitted-in-test}"]
+            else [%sexp (Intermediate.Part.bin_shape_t : Bin_shape.t)]
+          in
           raise_s
             [%message
               "Streamable intermediate part exceeded size threshold.  Depending on \
@@ -234,7 +241,7 @@ module Stable = struct
                 (part_index : int)
                 (the_part_bin_size : int)
                 (max_part_bin_size : int)
-                (Intermediate.Part.bin_shape_t : Bin_shape.t)];
+                (intermediate_part_bin_shape : Sexp.t)]);
         part)
     ;;
   end

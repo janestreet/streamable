@@ -12,6 +12,11 @@ module type Caller_converts = sig
     -> query
     -> (state * update Or_error.t Pipe.Reader.t) Deferred.Or_error.t
 
+  val dispatch_multi'
+    :  Versioned_rpc.Connection_with_menu.t
+    -> query
+    -> (state * update Or_error.t Pipe.Reader.t) Or_error.t Deferred.Or_error.t
+
   val name : string
 end
 
@@ -43,6 +48,12 @@ module type Both_convert = sig
     :  Versioned_rpc.Connection_with_menu.t
     -> caller_query
     -> (caller_state * caller_update Or_error.t Pipe.Reader.t) Deferred.Or_error.t
+
+  val dispatch_multi'
+    :  Versioned_rpc.Connection_with_menu.t
+    -> caller_query
+    -> (caller_state * caller_update Or_error.t Pipe.Reader.t) Or_error.t
+         Deferred.Or_error.t
 
   val implement_multi
     :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)

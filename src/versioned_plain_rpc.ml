@@ -16,18 +16,22 @@ module Caller_converts = struct
     let name = Model.name
 
     type dispatch_fun =
-      Rpc.Connection.t -> Model.query -> Model.response Deferred.Or_error.t
+      Rpc.Connection.t -> Model.query -> Model.response Or_error.t Deferred.Or_error.t
 
     let registry : dispatch_fun Callers_rpc_version_table.t =
       Callers_rpc_version_table.create ~rpc_name:name
     ;;
 
-    let dispatch_multi conn_with_menu query =
+    let dispatch_multi' conn_with_menu query =
       let conn = Versioned_rpc.Connection_with_menu.connection conn_with_menu in
       let menu = Versioned_rpc.Connection_with_menu.menu       conn_with_menu in
       match Callers_rpc_version_table.lookup_most_recent registry ~callee_menu:menu with
-      | Error e     -> return (Error e)
-      | Ok dispatch -> dispatch conn query
+      | Error e      -> return (Error e)
+      | Ok dispatch' -> dispatch' conn query
+    ;;
+
+    let dispatch_multi conn_with_menu query =
+      dispatch_multi' conn_with_menu query |> Deferred.map ~f:Or_error.join
     ;;
 
     module Register (Version : sig
@@ -51,14 +55,14 @@ module Caller_converts = struct
 
       let version = Version.version
 
-      let dispatch conn query =
+      let dispatch' conn query =
         let open Deferred.Or_error.Let_syntax in
         let query = Version.query_of_model query in
-        let%bind response = Plain_rpc.dispatch rpc conn query in
-        return (Version.model_of_response response)
+        let%bind server_response = Plain_rpc.dispatch' rpc conn query in
+        Or_error.map server_response ~f:Version.model_of_response |> return
       ;;
 
-      let () = Callers_rpc_version_table.add_exn registry ~version dispatch
+      let () = Callers_rpc_version_table.add_exn registry ~version dispatch'
     end
   end
 end
@@ -192,6 +196,7 @@ module Both_convert = struct
     end
 
     let dispatch_multi  = Caller.dispatch_multi
+    let dispatch_multi' = Caller.dispatch_multi'
     let implement_multi = Callee.implement_multi
   end
 end
