@@ -182,6 +182,7 @@ module type Of_tuple9_rpc = functor
   (I : S_rpc)
   -> S_rpc with type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t * I.t
 
+(*$ Streamable_cinaps.of_variant_intf 2 *)
 module type Of_variant2 = functor (A : S) (B : S) ->
   S
   with type t =
@@ -189,6 +190,9 @@ module type Of_variant2 = functor (A : S) (B : S) ->
          | `B of B.t
          ]
 
+(*$*)
+
+(*$ Streamable_cinaps.of_variant_rpc_intf 2 *)
 module type Of_variant2_rpc = functor (A : S_rpc) (B : S_rpc) ->
   S_rpc
   with type t =
@@ -196,6 +200,9 @@ module type Of_variant2_rpc = functor (A : S_rpc) (B : S_rpc) ->
          | `B of B.t
          ]
 
+(*$*)
+
+(*$ Streamable_cinaps.of_variant_intf 3 *)
 module type Of_variant3 = functor (A : S) (B : S) (C : S) ->
   S
   with type t =
@@ -204,6 +211,9 @@ module type Of_variant3 = functor (A : S) (B : S) (C : S) ->
          | `C of C.t
          ]
 
+(*$*)
+
+(*$ Streamable_cinaps.of_variant_rpc_intf 3 *)
 module type Of_variant3_rpc = functor (A : S_rpc) (B : S_rpc) (C : S_rpc) ->
   S_rpc
   with type t =
@@ -212,6 +222,9 @@ module type Of_variant3_rpc = functor (A : S_rpc) (B : S_rpc) (C : S_rpc) ->
          | `C of C.t
          ]
 
+(*$*)
+
+(*$ Streamable_cinaps.of_variant_intf 4 *)
 module type Of_variant4 = functor (A : S) (B : S) (C : S) (D : S) ->
   S
   with type t =
@@ -221,6 +234,9 @@ module type Of_variant4 = functor (A : S) (B : S) (C : S) (D : S) ->
          | `D of D.t
          ]
 
+(*$*)
+
+(*$ Streamable_cinaps.of_variant_rpc_intf 4 *)
 module type Of_variant4_rpc = functor (A : S_rpc) (B : S_rpc) (C : S_rpc) (D : S_rpc) ->
   S_rpc
   with type t =
@@ -229,6 +245,40 @@ module type Of_variant4_rpc = functor (A : S_rpc) (B : S_rpc) (C : S_rpc) (D : S
          | `C of C.t
          | `D of D.t
          ]
+
+(*$*)
+
+(*$ Streamable_cinaps.of_variant_intf 5 *)
+module type Of_variant5 = functor (A : S) (B : S) (C : S) (D : S) (E : S) ->
+  S
+  with type t =
+         [ `A of A.t
+         | `B of B.t
+         | `C of C.t
+         | `D of D.t
+         | `E of E.t
+         ]
+
+(*$*)
+
+(*$ Streamable_cinaps.of_variant_rpc_intf 5 *)
+module type Of_variant5_rpc = functor
+  (A : S_rpc)
+  (B : S_rpc)
+  (C : S_rpc)
+  (D : S_rpc)
+  (E : S_rpc)
+  ->
+    S_rpc
+  with type t =
+         [ `A of A.t
+         | `B of B.t
+         | `C of C.t
+         | `D of D.t
+         | `E of E.t
+         ]
+
+(*$*)
 
 module type Of_list          = functor (A : S    ) -> S     with type t = A.t list
 module type Of_list_rpc      = functor (A : S_rpc) -> S_rpc with type t = A.t list
@@ -327,6 +377,8 @@ module type Main       = sig
   module type Of_variant3_rpc         = Of_variant3_rpc
   module type Of_variant4             = Of_variant4
   module type Of_variant4_rpc         = Of_variant4_rpc
+  module type Of_variant5             = Of_variant5
+  module type Of_variant5_rpc         = Of_variant5_rpc
   module type Of_list                 = Of_list
   module type Of_list_rpc             = Of_list_rpc
   module type Of_nonempty_list        = Of_nonempty_list
@@ -381,6 +433,8 @@ module type Main       = sig
   module Of_variant3_rpc : Of_variant3_rpc
   module Of_variant4 : Of_variant4
   module Of_variant4_rpc : Of_variant4_rpc
+  module Of_variant5 : Of_variant5
+  module Of_variant5_rpc : Of_variant5_rpc
   module Of_list : Of_list
   module Of_list_rpc : Of_list_rpc
   module Of_nonempty_list : Of_nonempty_list
@@ -626,6 +680,14 @@ module type Main       = sig
       module V1 : Of_variant4_rpc
     end
 
+    module Of_variant5 : sig
+      module V1 : Of_variant5
+    end
+
+    module Of_variant5_rpc : sig
+      module V1 : Of_variant5_rpc
+    end
+
     module Of_sexpable : sig
       module V1 : Of_sexpable
     end
@@ -689,6 +751,8 @@ module type Main       = sig
       module Of_variant3_rpc      = Of_variant3_rpc.V1
       module Of_variant4          = Of_variant4.V1
       module Of_variant4_rpc      = Of_variant4_rpc.V1
+      module Of_variant5          = Of_variant5.V1
+      module Of_variant5_rpc      = Of_variant5_rpc.V1
       module Remove_t             = Remove_t
       module Remove_t_rpc         = Remove_t_rpc
     end

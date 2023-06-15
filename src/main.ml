@@ -1373,6 +1373,7 @@ module Stable = struct
     end
   end
 
+  (*$ Streamable_cinaps.of_variant_rpc_impl 2 *)
   module Of_variant2_rpc = struct
     module V1 (A : S_rpc) (B : S_rpc) = struct
       type t =
@@ -1426,6 +1427,9 @@ module Stable = struct
     end
   end
 
+  (*$*)
+
+  (*$ Streamable_cinaps.of_variant_impl 2 *)
   module Of_variant2 = struct
     module V1 (A : S) (B : S) = struct
       module Plain = Of_variant2_rpc.V1 (A) (B)
@@ -1444,6 +1448,9 @@ module Stable = struct
     end
   end
 
+  (*$*)
+
+  (*$ Streamable_cinaps.of_variant_rpc_impl 3 *)
   module Of_variant3_rpc = struct
     module V1 (A : S_rpc) (B : S_rpc) (C : S_rpc) = struct
       type t =
@@ -1508,6 +1515,9 @@ module Stable = struct
     end
   end
 
+  (*$*)
+
+  (*$ Streamable_cinaps.of_variant_impl 3 *)
   module Of_variant3 = struct
     module V1 (A : S) (B : S) (C : S) = struct
       module Plain = Of_variant3_rpc.V1 (A) (B) (C)
@@ -1528,6 +1538,9 @@ module Stable = struct
     end
   end
 
+  (*$*)
+
+  (*$ Streamable_cinaps.of_variant_rpc_impl 4 *)
   module Of_variant4_rpc = struct
     module V1 (A : S_rpc) (B : S_rpc) (C : S_rpc) (D : S_rpc) = struct
       type t =
@@ -1603,6 +1616,9 @@ module Stable = struct
     end
   end
 
+  (*$*)
+
+  (*$ Streamable_cinaps.of_variant_impl 4 *)
   module Of_variant4 = struct
     module V1 (A : S) (B : S) (C : S) (D : S) = struct
       module Plain = Of_variant4_rpc.V1 (A) (B) (C) (D)
@@ -1624,6 +1640,124 @@ module Stable = struct
           end)
     end
   end
+
+  (*$*)
+
+  (*$ Streamable_cinaps.of_variant_rpc_impl 5 *)
+  module Of_variant5_rpc = struct
+    module V1 (A : S_rpc) (B : S_rpc) (C : S_rpc) (D : S_rpc) (E : S_rpc) = struct
+      type t =
+        [ `A of A.t
+        | `B of B.t
+        | `C of C.t
+        | `D of D.t
+        | `E of E.t
+        ]
+
+      module Intermediate = struct
+        type t =
+          | Empty
+          | A of A.Intermediate.t
+          | B of B.Intermediate.t
+          | C of C.Intermediate.t
+          | D of D.Intermediate.t
+          | E of E.Intermediate.t
+
+        module Part = struct
+          type t =
+            | A_start
+            | A_part of A.Intermediate.Part.t
+            | B_start
+            | B_part of B.Intermediate.Part.t
+            | C_start
+            | C_part of C.Intermediate.Part.t
+            | D_start
+            | D_part of D.Intermediate.Part.t
+            | E_start
+            | E_part of E.Intermediate.Part.t
+          [@@deriving bin_io, variants]
+        end
+
+        let create () = Empty
+
+        let apply_part t (part : Part.t) =
+          match t, part with
+          | Empty, A_start  -> A (A.Intermediate.create ())
+          | Empty, B_start  -> B (B.Intermediate.create ())
+          | Empty, C_start  -> C (C.Intermediate.create ())
+          | Empty, D_start  -> D (D.Intermediate.create ())
+          | Empty, E_start  -> E (E.Intermediate.create ())
+          | A a  , A_part x -> A (A.Intermediate.apply_part a x)
+          | B b  , B_part x -> B (B.Intermediate.apply_part b x)
+          | C c  , C_part x -> C (C.Intermediate.apply_part c x)
+          | D d  , D_part x -> D (D.Intermediate.apply_part d x)
+          | E e  , E_part x -> E (E.Intermediate.apply_part e x)
+          | _               -> assert false
+        ;;
+      end
+
+      let to_parts = function
+        | `A a ->
+          Sequence.cons
+            Intermediate.Part.a_start
+            (Sequence.map (A.to_parts a) ~f:Intermediate.Part.a_part)
+        | `B b ->
+          Sequence.cons
+            Intermediate.Part.b_start
+            (Sequence.map (B.to_parts b) ~f:Intermediate.Part.b_part)
+        | `C c ->
+          Sequence.cons
+            Intermediate.Part.c_start
+            (Sequence.map (C.to_parts c) ~f:Intermediate.Part.c_part)
+        | `D d ->
+          Sequence.cons
+            Intermediate.Part.d_start
+            (Sequence.map (D.to_parts d) ~f:Intermediate.Part.d_part)
+        | `E e ->
+          Sequence.cons
+            Intermediate.Part.e_start
+            (Sequence.map (E.to_parts e) ~f:Intermediate.Part.e_part)
+      ;;
+
+      let finalize = function
+        | Intermediate.Empty -> assert false
+        | Intermediate.A a   -> `A (A.finalize a)
+        | Intermediate.B b   -> `B (B.finalize b)
+        | Intermediate.C c   -> `C (C.finalize c)
+        | Intermediate.D d   -> `D (D.finalize d)
+        | Intermediate.E e   -> `E (E.finalize e)
+      ;;
+    end
+  end
+
+  (*$*)
+
+  (*$ Streamable_cinaps.of_variant_impl 5 *)
+  module Of_variant5 = struct
+    module V1 (A : S) (B : S) (C : S) (D : S) (E : S) = struct
+      module Plain = Of_variant5_rpc.V1 (A) (B) (C) (D) (E)
+
+      include
+        Add_sexp.V1
+          (Plain)
+          (struct
+            type t = Plain.Intermediate.Part.t =
+              | A_start
+              | A_part of A.Intermediate.Part.t
+              | B_start
+              | B_part of B.Intermediate.Part.t
+              | C_start
+              | C_part of C.Intermediate.Part.t
+              | D_start
+              | D_part of D.Intermediate.Part.t
+              | E_start
+              | E_part of E.Intermediate.Part.t
+            [@@deriving sexp]
+          end)
+    end
+  end
+
+  (*$*)
 
   module Of_list_or_sequence_not_packed_rpc = struct
     module V1 (T : sig
@@ -2325,6 +2459,8 @@ module Stable = struct
     module Of_variant3_rpc      = Of_variant3_rpc.V1
     module Of_variant4          = Of_variant4.V1
     module Of_variant4_rpc      = Of_variant4_rpc.V1
+    module Of_variant5          = Of_variant5.V1
+    module Of_variant5_rpc      = Of_variant5_rpc.V1
     module Checked              = Checked
     module Packed               = Packed.V1
     module Packed_rpc           = Packed_rpc.V1
