@@ -99,7 +99,11 @@ module type State_rpc = sig
       type ('state_part, 'update_part) direct_writer := ('state_part, 'update_part) t
       type ('state_part, 'update_part) t
 
-      val create : ?buffer:Rpc.Pipe_rpc.Direct_stream_writer.Group.Buffer.t -> unit -> _ t
+      val create
+        :  ?buffer:Rpc.Pipe_rpc.Direct_stream_writer.Group.Buffer.t
+        -> ?send_last_value_on_add:bool
+        -> unit
+        -> _ t
 
       (** [flushed_or_closed t] is determined when the underlying writer for each member of [t] is
           flushed or closed.
