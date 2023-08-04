@@ -171,10 +171,10 @@ module Structure = struct
         ~loc
         "Multiple matchers satisfied type `%s' for a given clause group. This is likely \
          a bug with [ppx_streamable]."
-        (Type.human_readable_name type_)
+        (Type_.human_readable_name type_)
 
   and generate_streamable_module type_ ~rpc ~version =
-    let loc = Type.loc type_ in
+    let loc = Type_.loc type_ in
     match
       List.find_map
         clause_groups_in_descending_order_of_precedence
@@ -185,7 +185,7 @@ module Structure = struct
       Location.raise_errorf
         ~loc
         "Handling of type `%s' is unknown."
-        (Type.human_readable_name type_)
+        (Type_.human_readable_name type_)
   ;;
 
   let extract_derivers type_dec =

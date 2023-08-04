@@ -135,12 +135,12 @@ let type_declaration_match
       ~of_streamable_fun
       ~children
   =
-  match (type_ : Type.t) with
+  match (type_ : Type_.t) with
   | Core_type (_ : core_type) -> None
   | Type_declaration type_dec ->
     let%map payload = payload type_dec in
-    let children_types = children ~loc:(Type.loc type_) ~payload in
-    ({ children      = List.map ~f:Type.core_type children_types
+    let children_types = children ~loc:(Type_.loc type_) ~payload in
+    ({ children      = List.map ~f:Type_.core_type children_types
      ; apply_functor =
          (fun ctx children_modules ->
             let loc      = ctx.loc                                      in
@@ -161,7 +161,7 @@ let polymorphic_primitive_or_module_match
       type_
       (_ : Ctx.t)
   =
-  let%bind core_type = Type.match_core_type type_ in
+  let%bind core_type = Type_.match_core_type type_ in
   let%map type_parameters =
     match core_type.ptyp_desc with
     | Ptyp_constr (longident_loc, type_parameters) ->
@@ -172,7 +172,7 @@ let polymorphic_primitive_or_module_match
          Some type_parameters)
     | _ -> None
   in
-  ({ children      = List.map type_parameters ~f:Type.core_type
+  ({ children      = List.map type_parameters ~f:Type_.core_type
    ; apply_functor =
        (fun ctx children ->
           apply_streamable_dot

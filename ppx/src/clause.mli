@@ -15,17 +15,17 @@ module Match : sig
       types (i.e. [apply_functor]).
 
       The [children] are eventually passed into [apply_functor], after first being
-      converted from [Type.t]s to [module_expr]s.
+      converted from [Type_.t]s to [module_expr]s.
 
       The reason for splitting these out is so that the recursive logic for converting
-      from a [Type.t] to a [module_expr] is centralized, and matchers do not need to
+      from a [Type_.t] to a [module_expr] is centralized, and matchers do not need to
       re-implement nor worry about that logic.
   *)
   type t =
-    { children      : Type.t               list
+    { children      : Type_.t               list
     ; apply_functor : Ctx.t -> module_expr list -> module_expr
     }
 end
 
 (** the clause itself is a function that attempts the pattern match *)
-type t = Type.t -> Ctx.t -> Match.t option
+type t = Type_.t -> Ctx.t -> Match.t option

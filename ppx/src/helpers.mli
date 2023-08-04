@@ -68,7 +68,7 @@ val uppercase_name_of_num : int -> label
 
 (** Code common to handling record/variant clauses. *)
 val type_declaration_match
-  :  Type.t
+  :  Type_.t
   -> payload:(type_declaration -> 'a option)
   -> streamable_module:(Ctx.t -> (core_type * module_expr) list -> module_expr)
   -> to_streamable_fun:(loc:location -> payload:'a -> expression)
