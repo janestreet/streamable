@@ -27,8 +27,8 @@ let primitive ~core_type =
 ;;
 
 let maybe_match type_ (_ : Ctx.t) =
-  let%bind core_type = Type.match_core_type type_ in
-  let%map  primitive = primitive ~core_type       in
+  let%bind core_type = Type_.match_core_type type_ in
+  let%map  primitive = primitive ~core_type        in
   ({ children      = []
    ; apply_functor =
        (fun ctx children ->

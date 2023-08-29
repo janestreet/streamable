@@ -59,13 +59,13 @@ module Make (X : X) = struct
   ;;
 
   let maybe_match type_ (_ : Ctx.t) =
-    let%bind core_type = Type.match_core_type type_ in
+    let%bind core_type = Type_.match_core_type type_ in
     let%map atomic_longident, children_types =
       Option.first_some
         (match_on_submodule_form     ~core_type)
         (match_on_parameterized_form ~core_type)
     in
-    ({ children      = List.map children_types ~f:Type.core_type
+    ({ children      = List.map children_types ~f:Type_.core_type
      ; apply_functor =
          (fun ctx children ->
             let loc = ctx.loc in

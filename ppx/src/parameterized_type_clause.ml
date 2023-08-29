@@ -2,7 +2,7 @@ open! Base
 open! Import
 
 let maybe_match type_ (_ : Ctx.t) =
-  let%bind core_type = Type.match_core_type type_ in
+  let%bind core_type = Type_.match_core_type type_ in
   let module_name = Helpers.if_module_dot_t_then_module core_type in
   let%map type_parameters =
     match core_type.ptyp_desc with
@@ -16,7 +16,7 @@ let maybe_match type_ (_ : Ctx.t) =
        | _                                                          -> None)
     | _ -> None
   in
-  ({ children      = List.map type_parameters ~f:Type.core_type
+  ({ children      = List.map type_parameters ~f:Type_.core_type
    ; apply_functor =
        (fun { loc; _ } children ->
           let functor_name =

@@ -2,7 +2,7 @@ open! Base
 open! Import
 
 let maybe_match type_ (_ : Ctx.t) =
-  let%bind core_type = Type.match_core_type type_ in
+  let%bind core_type = Type_.match_core_type type_ in
   let%map module_ =
     match core_type.ptyp_desc with
     | Ptyp_constr (longident_loc, []) ->

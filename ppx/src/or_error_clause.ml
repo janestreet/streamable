@@ -16,13 +16,13 @@ let type_parameter ~core_type =
 ;;
 
 let maybe_match type_ { Ctx.version; _ } =
-  let%bind core_type      = Type.match_core_type type_ in
-  let%map  type_parameter = type_parameter ~core_type  in
+  let%bind core_type      = Type_.match_core_type type_ in
+  let%map  type_parameter = type_parameter ~core_type   in
   ({ children =
        [ Core_type type_parameter
        ; Core_type
            (Helpers.core_type_with_atomic_attribute
-              ~loc:(Type.loc type_)
+              ~loc:(Type_.loc type_)
               ~module_dot_t:
                 (match version with
                  | V1 -> "Core.Error.Stable.V2.t"))
