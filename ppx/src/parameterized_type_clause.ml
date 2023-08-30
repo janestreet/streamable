@@ -12,22 +12,22 @@ let maybe_match type_ (_ : Ctx.t) =
        | (`prefix (Some module_name'), `last "t"), Some module_name
          when [%compare.equal: Longident.t] module_name.txt module_name' ->
          Some type_parameters
-       | (`prefix None,                `last "t"), None             -> Some type_parameters
-       | _                                                          -> None)
+       | (`prefix None, `last "t"), None -> Some type_parameters
+       | _ -> None)
     | _ -> None
   in
-  ({ children      = List.map type_parameters ~f:Type_.core_type
+  ({ children = List.map type_parameters ~f:Type_.core_type
    ; apply_functor =
        (fun { loc; _ } children ->
-          let functor_name =
-            match module_name with
-            | None -> Loc.make ~loc (Longident.Lident Helpers.make_streamable)
-            | Some module_name ->
-              Loc.map module_name ~f:(fun module_name ->
-                Longident.Ldot (module_name, Helpers.make_streamable))
-          in
-          let functor_ = pmod_ident ~loc functor_name in
-          List.fold children ~init:functor_ ~f:(pmod_apply ~loc))
+         let functor_name =
+           match module_name with
+           | None -> Loc.make ~loc (Longident.Lident Helpers.make_streamable)
+           | Some module_name ->
+             Loc.map module_name ~f:(fun module_name ->
+               Longident.Ldot (module_name, Helpers.make_streamable))
+         in
+         let functor_ = pmod_ident ~loc functor_name in
+         List.fold children ~init:functor_ ~f:(pmod_apply ~loc))
    }
-   : Clause.Match.t)
+    : Clause.Match.t)
 ;;

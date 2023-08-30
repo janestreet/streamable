@@ -3,14 +3,14 @@ open! Import
 
 type 'a t =
   | Leaf of 'a
-  | T2   of 'a t * 'a t
-  | T3   of 'a t * 'a t * 'a t
-  | T4   of 'a t * 'a t * 'a t * 'a t
-  | T5   of 'a t * 'a t * 'a t * 'a t * 'a t
-  | T6   of 'a t * 'a t * 'a t * 'a t * 'a t * 'a t
-  | T7   of 'a t * 'a t * 'a t * 'a t * 'a t * 'a t * 'a t
-  | T8   of 'a t * 'a t * 'a t * 'a t * 'a t * 'a t * 'a t * 'a t
-  | T9   of 'a t * 'a t * 'a t * 'a t * 'a t * 'a t * 'a t * 'a t * 'a t
+  | T2 of 'a t * 'a t
+  | T3 of 'a t * 'a t * 'a t
+  | T4 of 'a t * 'a t * 'a t * 'a t
+  | T5 of 'a t * 'a t * 'a t * 'a t * 'a t
+  | T6 of 'a t * 'a t * 'a t * 'a t * 'a t * 'a t
+  | T7 of 'a t * 'a t * 'a t * 'a t * 'a t * 'a t * 'a t
+  | T8 of 'a t * 'a t * 'a t * 'a t * 'a t * 'a t * 'a t * 'a t
+  | T9 of 'a t * 'a t * 'a t * 'a t * 'a t * 'a t * 'a t * 'a t * 'a t
 
 let create constructors =
   let rec loop = function
@@ -20,9 +20,9 @@ let create constructors =
     | [ a; b; c ] -> T3 (Leaf a, Leaf b, Leaf c)
     | [ a; b; c; d ] -> T4 (Leaf a, Leaf b, Leaf c, Leaf d)
     | alist ->
-      let n = List.length alist                                              in
-      let q = n / 9                                                          in
-      let r = n % 9                                                          in
+      let n = List.length alist in
+      let q = n / 9 in
+      let r = n % 9 in
       let groups = List.chunks_of alist ~length:(if r = 0 then q else q + 1) in
       (match groups with
        | [ a; b; c; d; e ] ->
@@ -81,12 +81,12 @@ let create constructors =
 let rec map t ~f =
   let m = map ~f in
   match t with
-  | Leaf x0                         -> Leaf (f x0)
-  | T2 (x0, x1)                     -> T2 (m x0, m x1)
-  | T3 (x0, x1, x2)                 -> T3 (m x0, m x1, m x2)
-  | T4 (x0, x1, x2, x3)             -> T4 (m x0, m x1, m x2, m x3)
-  | T5 (x0, x1, x2, x3, x4)         -> T5 (m x0, m x1, m x2, m x3, m x4)
-  | T6 (x0, x1, x2, x3, x4, x5)     -> T6 (m x0, m x1, m x2, m x3, m x4, m x5)
+  | Leaf x0 -> Leaf (f x0)
+  | T2 (x0, x1) -> T2 (m x0, m x1)
+  | T3 (x0, x1, x2) -> T3 (m x0, m x1, m x2)
+  | T4 (x0, x1, x2, x3) -> T4 (m x0, m x1, m x2, m x3)
+  | T5 (x0, x1, x2, x3, x4) -> T5 (m x0, m x1, m x2, m x3, m x4)
+  | T6 (x0, x1, x2, x3, x4, x5) -> T6 (m x0, m x1, m x2, m x3, m x4, m x5)
   | T7 (x0, x1, x2, x3, x4, x5, x6) -> T7 (m x0, m x1, m x2, m x3, m x4, m x5, m x6)
   | T8 (x0, x1, x2, x3, x4, x5, x6, x7) ->
     T8 (m x0, m x1, m x2, m x3, m x4, m x5, m x6, m x7)
@@ -103,33 +103,33 @@ let number t =
 ;;
 
 let to_toplevel_list = function
-  | Leaf _                              -> assert false
-  | T2 (x0, x1)                         -> [ x0; x1 ]
-  | T3 (x0, x1, x2)                     -> [ x0; x1; x2 ]
-  | T4 (x0, x1, x2, x3)                 -> [ x0; x1; x2; x3 ]
-  | T5 (x0, x1, x2, x3, x4)             -> [ x0; x1; x2; x3; x4 ]
-  | T6 (x0, x1, x2, x3, x4, x5)         -> [ x0; x1; x2; x3; x4; x5 ]
-  | T7 (x0, x1, x2, x3, x4, x5, x6)     -> [ x0; x1; x2; x3; x4; x5; x6 ]
+  | Leaf _ -> assert false
+  | T2 (x0, x1) -> [ x0; x1 ]
+  | T3 (x0, x1, x2) -> [ x0; x1; x2 ]
+  | T4 (x0, x1, x2, x3) -> [ x0; x1; x2; x3 ]
+  | T5 (x0, x1, x2, x3, x4) -> [ x0; x1; x2; x3; x4 ]
+  | T6 (x0, x1, x2, x3, x4, x5) -> [ x0; x1; x2; x3; x4; x5 ]
+  | T7 (x0, x1, x2, x3, x4, x5, x6) -> [ x0; x1; x2; x3; x4; x5; x6 ]
   | T8 (x0, x1, x2, x3, x4, x5, x6, x7) -> [ x0; x1; x2; x3; x4; x5; x6; x7 ]
   | T9 (x0, x1, x2, x3, x4, x5, x6, x7, x8) -> [ x0; x1; x2; x3; x4; x5; x6; x7; x8 ]
 ;;
 
 let rec sexp_of_t sexp_of_a t : Sexp.t =
   match t with
-  | Leaf a -> [%sexp_of: a       ] a
-  | _      -> [%sexp_of: a t list] (to_toplevel_list t)
+  | Leaf a -> [%sexp_of: a] a
+  | _ -> [%sexp_of: a t list] (to_toplevel_list t)
 ;;
 
 let rec to_list t =
   match t with
   | Leaf x -> [ x ]
-  | _      -> List.concat_map ~f:to_list (to_toplevel_list t)
+  | _ -> List.concat_map ~f:to_list (to_toplevel_list t)
 ;;
 
 let flat_tuple_type ~loc t : core_type =
   match t with
   | Leaf x -> x
-  | _      -> ptyp_tuple ~loc (to_list t)
+  | _ -> ptyp_tuple ~loc (to_list t)
 ;;
 
 let exp_var ~loc i = Helpers.exp_var ~loc (Helpers.lowercase_name_of_num i)
@@ -138,7 +138,7 @@ let pat_var ~loc i = Helpers.pat_var ~loc (Helpers.lowercase_name_of_num i)
 let rec pattern ~loc t =
   match t with
   | Leaf i -> pat_var ~loc i
-  | _      ->
+  | _ ->
     let ts = to_toplevel_list t in
     ppat_tuple ~loc (List.map ts ~f:(pattern ~loc))
 ;;
@@ -146,7 +146,7 @@ let rec pattern ~loc t =
 let rec expression ~loc t =
   match t with
   | Leaf i -> exp_var ~loc i
-  | _      ->
+  | _ ->
     let ts = to_toplevel_list t in
     pexp_tuple ~loc (List.map ts ~f:(expression ~loc))
 ;;
@@ -154,9 +154,9 @@ let rec expression ~loc t =
 let of_flat_tuple ~loc t =
   match t with
   | Leaf _ -> [%expr fun x -> x]
-  | _      ->
-    let t   = number t                                                 in
-    let lhs = pattern ~loc t                                           in
+  | _ ->
+    let t = number t in
+    let lhs = pattern ~loc t in
     let rhs = pexp_tuple ~loc (List.map ~f:(exp_var ~loc) (to_list t)) in
     [%expr fun [%p lhs] -> [%e rhs]]
 ;;
@@ -164,19 +164,19 @@ let of_flat_tuple ~loc t =
 let to_flat_tuple ~loc t =
   match t with
   | Leaf _ -> [%expr fun x -> x]
-  | _      ->
-    let t   = number t                                                 in
+  | _ ->
+    let t = number t in
     let lhs = ppat_tuple ~loc (List.map ~f:(pat_var ~loc) (to_list t)) in
-    let rhs = expression ~loc t                                        in
+    let rhs = expression ~loc t in
     [%expr fun [%p lhs] -> [%e rhs]]
 ;;
 
 let rec streamable_module (ctx : Ctx.t) t =
   match t with
   | Leaf m -> m
-  | _      ->
-    let ts    = to_toplevel_list t in
-    let arity = List.length ts     in
+  | _ ->
+    let ts = to_toplevel_list t in
+    let arity = List.length ts in
     Helpers.apply_streamable_dot
       ctx
       ~functor_name:[%string "Of_tuple%{arity#Int}"]
@@ -197,8 +197,8 @@ let is_flat = function
 ;;
 
 let streamable_of_tuple (ctx : Ctx.t) children =
-  let loc = ctx.loc         in
-  let t   = create children in
+  let loc = ctx.loc in
+  let t = create children in
   if is_flat t
   then streamable_module ctx (map ~f:snd t)
   else

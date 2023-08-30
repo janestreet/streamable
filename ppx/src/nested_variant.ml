@@ -26,18 +26,18 @@ end
 
 type 'a t =
   | Leaf of 'a
-  | V2   of 'a t * 'a t
-  | V3   of 'a t * 'a t * 'a t
-  | V4   of 'a t * 'a t * 'a t * 'a t
+  | V2 of 'a t * 'a t
+  | V3 of 'a t * 'a t * 'a t
+  | V4 of 'a t * 'a t * 'a t * 'a t
 
 let rec create = function
-  | []       -> raise_s [%message [%here] "Error: [nested_variant] of empty constructor list"]
-  | [ a ]    -> Leaf    a
-  | [ a; b ] -> V2      (Leaf a, Leaf b)
-  | alist    ->
-    let n = List.length alist                                              in
-    let q = n / 4                                                          in
-    let r = n % 4                                                          in
+  | [] -> raise_s [%message [%here] "Error: [nested_variant] of empty constructor list"]
+  | [ a ] -> Leaf a
+  | [ a; b ] -> V2 (Leaf a, Leaf b)
+  | alist ->
+    let n = List.length alist in
+    let q = n / 4 in
+    let r = n % 4 in
     let groups = List.chunks_of alist ~length:(if r = 0 then q else q + 1) in
     (match groups with
      | [ a; b; c ] ->
@@ -60,7 +60,7 @@ let rec create = function
 let iteri t ~f =
   let rec loop (path : Path.t) t =
     match t with
-    | Leaf a    -> f (List.rev path) a
+    | Leaf a -> f (List.rev path) a
     | V2 (a, b) ->
       loop (A :: path) a;
       loop (B :: path) b
@@ -113,16 +113,16 @@ let number t =
 ;;
 
 let to_toplevel_list = function
-  | Leaf _          -> assert false
-  | V2 (a, b)       -> [ Tag.A, a; B, b ]
-  | V3 (a, b, c)    -> [ Tag.A, a; B, b; C, c ]
+  | Leaf _ -> assert false
+  | V2 (a, b) -> [ Tag.A, a; B, b ]
+  | V3 (a, b, c) -> [ Tag.A, a; B, b; C, c ]
   | V4 (a, b, c, d) -> [ Tag.A, a; B, b; C, c; D, d ]
 ;;
 
 let rec sexp_of_t sexp_of_a t =
   match t with
-  | Leaf x -> [%sexp_of: a       ] x
-  | _      -> [%sexp_of: a t list] (List.map ~f:snd (to_toplevel_list t))
+  | Leaf x -> [%sexp_of: a] x
+  | _ -> [%sexp_of: a t list] (List.map ~f:snd (to_toplevel_list t))
 ;;
 
 let to_list t = paths t |> List.map ~f:snd
@@ -130,7 +130,7 @@ let to_list t = paths t |> List.map ~f:snd
 let flat_variant_type ~loc t : core_type =
   match t with
   | Leaf x -> x
-  | _      ->
+  | _ ->
     let core_types = to_list t in
     ptyp_variant
       ~loc
@@ -148,7 +148,7 @@ let exp_tag_apply ~loc tag arg = exp_con_apply ~loc (Tag.to_string tag) arg
 
 let of_flat_variant_case ~loc (path, i) : case =
   let var = Helpers.lowercase_name_of_num i in
-  let con = String.capitalize var           in
+  let con = String.capitalize var in
   case
     ~lhs:(List.fold_right path ~init:(Helpers.pat_var ~loc var) ~f:(pat_tag_apply ~loc))
     ~guard:None
@@ -165,15 +165,15 @@ let to_flat_variant_case ~loc (path, i) : case =
 ;;
 
 let of_flat_variant ~loc t =
-  let t     = number t                                      in
-  let paths = paths t                                       in
+  let t = number t in
+  let paths = paths t in
   let cases = List.map paths ~f:(of_flat_variant_case ~loc) in
   pexp_function ~loc cases
 ;;
 
 let to_flat_variant ~loc t =
-  let t     = number t                                      in
-  let paths = paths t                                       in
+  let t = number t in
+  let paths = paths t in
   let cases = List.map paths ~f:(to_flat_variant_case ~loc) in
   pexp_function ~loc cases
 ;;
@@ -181,9 +181,9 @@ let to_flat_variant ~loc t =
 let rec streamable_module ctx t =
   match t with
   | Leaf m -> m
-  | _      ->
-    let ts    = to_toplevel_list t |> List.map ~f:snd in
-    let arity = List.length ts                        in
+  | _ ->
+    let ts = to_toplevel_list t |> List.map ~f:snd in
+    let arity = List.length ts in
     Helpers.apply_streamable_dot
       ctx
       ~functor_name:[%string "Of_variant%{arity#Int}"]
@@ -191,16 +191,16 @@ let rec streamable_module ctx t =
 ;;
 
 let is_flat = function
-  | Leaf _                              -> true
-  | V2 (Leaf _, Leaf _)                 -> true
-  | V3 (Leaf _, Leaf _, Leaf _)         -> true
+  | Leaf _ -> true
+  | V2 (Leaf _, Leaf _) -> true
+  | V3 (Leaf _, Leaf _, Leaf _) -> true
   | V4 (Leaf _, Leaf _, Leaf _, Leaf _) -> true
-  | V2 _ | V3 _ | V4 _                  -> false
+  | V2 _ | V3 _ | V4 _ -> false
 ;;
 
 let streamable_of_variant (ctx : Ctx.t) children =
-  let loc = ctx.loc         in
-  let t   = create children in
+  let loc = ctx.loc in
+  let t = create children in
   if is_flat t
   then streamable_module ctx (map ~f:snd t)
   else
@@ -218,5 +218,5 @@ module For_testing = struct
   type nonrec 'a t = 'a t [@@deriving sexp_of]
 
   let create = create
-  let paths  = paths
+  let paths = paths
 end

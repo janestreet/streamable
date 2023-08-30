@@ -6,7 +6,7 @@ open! Async_kernel
 open! Import
 
 module type S = sig
-  val name    : string
+  val name : string
   val version : int
 
   type query [@@deriving bin_io]
@@ -31,13 +31,20 @@ module type Plain_rpc = sig
     -> 'q
     -> 'r Deferred.Or_error.t
 
+  val dispatch'
+    :  ?metadata:Rpc_metadata.t
+    -> ('q, 'r) t
+    -> Rpc.Connection.t
+    -> 'q
+    -> 'r Or_error.t Deferred.Or_error.t
+
   val implement
     :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
     -> ('q, 'r) t
     -> ('conn_state -> 'q -> 'r Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t
 
-  val bin_query_shape    : _ t -> Bin_prot.Shape.t
+  val bin_query_shape : _ t -> Bin_prot.Shape.t
   val bin_response_shape : _ t -> Bin_prot.Shape.t
 
   module Make (X : S) : sig

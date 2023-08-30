@@ -6,7 +6,7 @@ open! Async_kernel
 open! Import
 
 module type S = sig
-  val name    : string
+  val name : string
   val version : int
 
   type query [@@deriving bin_io]
@@ -35,15 +35,21 @@ module type State_rpc = sig
     -> 'q
     -> ('s * 'u Pipe.Reader.t) Deferred.Or_error.t
 
+  val dispatch'
+    :  ?metadata:Rpc_metadata.t
+    -> ('q, 's, 'u) t
+    -> Rpc.Connection.t
+    -> 'q
+    -> ('s * 'u Pipe.Reader.t) Or_error.t Deferred.Or_error.t
+
   val implement
     :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
     -> ('q, 's, 'u) t
     -> ('conn_state -> 'q -> ('s * 'u Pipe.Reader.t) Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t
 
-
-  val bin_query_shape  : _ t -> Bin_prot.Shape.t
-  val bin_state_shape  : _ t -> Bin_prot.Shape.t
+  val bin_query_shape : _ t -> Bin_prot.Shape.t
+  val bin_state_shape : _ t -> Bin_prot.Shape.t
   val bin_update_shape : _ t -> Bin_prot.Shape.t
 
   module Direct_writer : sig
@@ -65,8 +71,8 @@ module type State_rpc = sig
     *)
     val finalise_state_without_pushback_exn : _ t -> [ `Ok | `Closed ]
 
-    val is_state_finalised                  : _ t -> bool
-    val state_finalised                     : _ t -> unit Deferred.t
+    val is_state_finalised : _ t -> bool
+    val state_finalised : _ t -> unit Deferred.t
 
     (** Write a part of an update. Returns [`Closed] if [t] is closed.
 
@@ -83,16 +89,20 @@ module type State_rpc = sig
     *)
     val finalise_update_without_pushback_exn : _ t -> [ `Ok | `Closed ]
 
-    val close                                : _ t -> unit
-    val closed                               : _ t -> unit Deferred.t
-    val flushed                              : _ t -> unit Deferred.t
-    val is_closed                            : _ t -> bool
+    val close : _ t -> unit
+    val closed : _ t -> unit Deferred.t
+    val flushed : _ t -> unit Deferred.t
+    val is_closed : _ t -> bool
 
     module Group : sig
       type ('state_part, 'update_part) direct_writer := ('state_part, 'update_part) t
       type ('state_part, 'update_part) t
 
-      val create : ?buffer:Rpc.Pipe_rpc.Direct_stream_writer.Group.Buffer.t -> unit -> _ t
+      val create
+        :  ?buffer:Rpc.Pipe_rpc.Direct_stream_writer.Group.Buffer.t
+        -> ?send_last_value_on_add:bool
+        -> unit
+        -> _ t
 
       (** [flushed_or_closed t] is determined when the underlying writer for each member of [t] is
           flushed or closed.
@@ -151,8 +161,8 @@ module type State_rpc = sig
       -> ('conn_state
           -> X.query
           -> (X.State.Intermediate.Part.t Pipe.Reader.t
-              * X.Update.Intermediate.Part.t Pipe.Reader.t Pipe.Reader.t)
-               Deferred.Or_error.t)
+             * X.Update.Intermediate.Part.t Pipe.Reader.t Pipe.Reader.t)
+             Deferred.Or_error.t)
       -> 'conn_state Rpc.Implementation.t
 
     val implement_direct

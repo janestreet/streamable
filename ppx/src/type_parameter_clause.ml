@@ -6,13 +6,13 @@ let maybe_match type_ (_ : Ctx.t) =
   let%map module_name =
     match core_type.ptyp_desc with
     | Ptyp_var name -> Some (Helpers.module_name_for_type_parameter (`Ptyp_var name))
-    | _             -> None
+    | _ -> None
   in
-  ({ children      = []
+  ({ children = []
    ; apply_functor =
        (fun { loc; _ } children ->
-          assert (List.is_empty children);
-          pmod_ident ~loc (Loc.make ~loc (Longident.Lident module_name)))
+         assert (List.is_empty children);
+         pmod_ident ~loc (Loc.make ~loc (Longident.Lident module_name)))
    }
-   : Clause.Match.t)
+    : Clause.Match.t)
 ;;

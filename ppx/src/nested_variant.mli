@@ -12,5 +12,5 @@ module For_testing : sig
   type 'a t [@@deriving sexp_of]
 
   val create : 'a list -> 'a t
-  val paths  : 'a t -> (Path.t * 'a) list
+  val paths : 'a t -> (Path.t * 'a) list
 end

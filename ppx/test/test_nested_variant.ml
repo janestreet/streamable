@@ -5,8 +5,8 @@ open! Import
    arities no greater than 4 *)
 
 let test ?(show_mapping = false) n =
-  let alist = List.init n ~f:Fn.id                    in
-  let repr  = Nested_variant.For_testing.create alist in
+  let alist = List.init n ~f:Fn.id in
+  let repr = Nested_variant.For_testing.create alist in
   print_s [%message (repr : int Nested_variant.For_testing.t)];
   if show_mapping
   then (

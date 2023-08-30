@@ -42,7 +42,7 @@ module Make (X : X) = struct
            ~first_module_name:X.Parameterized_form.name
        with
        | false -> None
-       | true  ->
+       | true ->
          assert_arity_is_expected
            ~longident_loc
            ~actual_arity:(List.length type_parameters)
@@ -62,18 +62,18 @@ module Make (X : X) = struct
     let%bind core_type = Type_.match_core_type type_ in
     let%map atomic_longident, children_types =
       Option.first_some
-        (match_on_submodule_form     ~core_type)
+        (match_on_submodule_form ~core_type)
         (match_on_parameterized_form ~core_type)
     in
-    ({ children      = List.map children_types ~f:Type_.core_type
+    ({ children = List.map children_types ~f:Type_.core_type
      ; apply_functor =
          (fun ctx children ->
-            let loc = ctx.loc in
-            Helpers.apply_streamable_dot
-              ctx
-              ~functor_name:[%string "Of_%{String.lowercase X.Parameterized_form.name}"]
-              ~arguments:(pmod_ident ~loc (Loc.make ~loc atomic_longident) :: children))
+           let loc = ctx.loc in
+           Helpers.apply_streamable_dot
+             ctx
+             ~functor_name:[%string "Of_%{String.lowercase X.Parameterized_form.name}"]
+             ~arguments:(pmod_ident ~loc (Loc.make ~loc atomic_longident) :: children))
      }
-     : Clause.Match.t)
+      : Clause.Match.t)
   ;;
 end

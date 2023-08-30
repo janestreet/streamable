@@ -1,7 +1,7 @@
 open! Core
 open! Async_kernel
 open! Import
-open  Deferred.Or_error.Let_syntax
+open Deferred.Or_error.Let_syntax
 include State_rpc_intf
 
 module type S_plus = sig
@@ -13,6 +13,12 @@ module type S_plus = sig
       -> Rpc.Connection.t
       -> query
       -> (state * update Pipe.Reader.t) Deferred.Or_error.t
+
+    val dispatch'
+      :  ?metadata:Rpc_metadata.t
+      -> Rpc.Connection.t
+      -> query
+      -> (state * update Pipe.Reader.t) Or_error.t Deferred.Or_error.t
 
     val implement
       :  ?on_exception:Rpc.On_exception.t
@@ -35,7 +41,7 @@ end
 
 module Response = struct
   type ('state_part, 'update_part) t =
-    | State  of 'state_part  Part_or_done.t
+    | State of 'state_part Part_or_done.t
     | Update of 'update_part Part_or_done.t
   [@@deriving bin_io]
 end
@@ -44,7 +50,7 @@ module Direct_writer = struct
   module T = Rpc.Pipe_rpc.Direct_stream_writer
 
   type ('state_part, 'update_part) t =
-    { writer          : ('state_part, 'update_part) Response.t T.t
+    { writer : ('state_part, 'update_part) Response.t T.t
     ; state_finalised : unit Ivar.t
     }
 
@@ -71,8 +77,8 @@ module Direct_writer = struct
   let finalise_state_without_pushback_exn t =
     raise_if_finalised t;
     match T.write_without_pushback t.writer (Response.State Done) with
-    | `Ok     ->
-      Ivar.fill t.state_finalised ();
+    | `Ok ->
+      Ivar.fill_exn t.state_finalised ();
       `Ok
     | `Closed -> `Closed
   ;;
@@ -98,9 +104,9 @@ module Direct_writer = struct
     T.write_without_pushback t.writer (Response.Update Done)
   ;;
 
-  let close     t = T.close     t.writer
-  let closed    t = T.closed    t.writer
-  let flushed   t = T.flushed   t.writer
+  let close t = T.close t.writer
+  let closed t = T.closed t.writer
+  let flushed t = T.flushed t.writer
   let is_closed t = T.is_closed t.writer
 
   module Group = struct
@@ -108,7 +114,7 @@ module Direct_writer = struct
 
     type ('state_part, 'update_part) t = ('state_part, 'update_part) Response.t T_group.t
 
-    let create            = T_group.create
+    let create = T_group.create
     let flushed_or_closed = T_group.flushed_or_closed
 
     let add_exn t writer =
@@ -147,7 +153,7 @@ end
 
 module Make (X : S) = struct
   module Underlying_rpc = struct
-    type query    = X.query [@@deriving bin_io]
+    type query = X.query [@@deriving bin_io]
 
     type response = (X.State.Intermediate.Part.t, X.Update.Intermediate.Part.t) Response.t
     [@@deriving bin_io]
@@ -180,23 +186,23 @@ module Make (X : S) = struct
     ;;
 
     let read_msg
-          (type a p)
-          (module X : S with type t = a and type part = p)
-          r
-          ~match_
-          ~noun
+      (type a p)
+      (module X : S with type t = a and type part = p)
+      r
+      ~match_
+      ~noun
       =
       let rec loop acc =
         match%bind Pipe.read r |> Deferred.ok with
-        | `Eof    ->
+        | `Eof ->
           Deferred.Or_error.errorf
             "Streamable.State_rpc: EOF before receiving complete %s"
             noun
         | `Ok msg ->
           (match match_ msg with
-           | Error e                     -> Deferred.return (Error e)
+           | Error e -> Deferred.return (Error e)
            | Ok (Part_or_done.Part part) -> loop (X.Intermediate.apply_part acc part)
-           | Ok Done                     -> return (X.finalize acc))
+           | Ok Done -> return (X.finalize acc))
       in
       loop (X.Intermediate.create ())
     ;;
@@ -221,18 +227,18 @@ module Make (X : S) = struct
         let%bind state_pipe, update_pipes = f c q in
         return
         @@ Pipe.create_reader ~close_on_exception:true (fun w ->
-          let open Deferred.Let_syntax in
-          upon (Pipe.closed w) (fun () ->
-            (match Pipe.read_now' update_pipes with
-             | `Eof | `Nothing_available -> ()
-             | `Ok queue                 ->
-               Queue.iter queue ~f:(fun update_pipe -> Pipe.close_read update_pipe));
-            Pipe.close_read update_pipes);
-          let%bind () =
-            write_msg w state_pipe ~constructor:(fun x -> Response.State x)
-          in
-          Pipe.iter update_pipes ~f:(fun update_pipe ->
-            write_msg w update_pipe ~constructor:(fun x -> Update x))))
+             let open Deferred.Let_syntax in
+             upon (Pipe.closed w) (fun () ->
+               (match Pipe.read_now' update_pipes with
+                | `Eof | `Nothing_available -> ()
+                | `Ok queue ->
+                  Queue.iter queue ~f:(fun update_pipe -> Pipe.close_read update_pipe));
+               Pipe.close_read update_pipes);
+             let%bind () =
+               write_msg w state_pipe ~constructor:(fun x -> Response.State x)
+             in
+             Pipe.iter update_pipes ~f:(fun update_pipe ->
+               write_msg w update_pipe ~constructor:(fun x -> Update x))))
     ;;
 
     let implement ?on_exception f =
@@ -265,32 +271,36 @@ module Make (X : S) = struct
           | State _ -> Or_error.errorf "Streamable.State_rpc: incomplete update message")
     ;;
 
+    let dispatch' ?metadata conn query =
+      let%bind server_response = Rpc.Pipe_rpc.dispatch ?metadata rpc conn query in
+      match server_response with
+      | Error _ as error -> return error
+      | Ok (r, _) ->
+        let%bind initial_state = read_state r in
+        let updates =
+          Pipe.create_reader ~close_on_exception:true (fun w ->
+            let open Deferred.Let_syntax in
+            let rec loop () =
+              match%bind
+                Deferred.choose
+                  [ Deferred.choice (read_update r) Result.ok
+                  ; Deferred.choice (Pipe.closed w) (fun () -> None)
+                  ]
+              with
+              | Some update ->
+                let%bind () = Pipe.write_if_open w update in
+                loop ()
+              | None -> return ()
+            in
+            let%bind () = loop () in
+            Pipe.close_read r;
+            return ())
+        in
+        return (Ok (initial_state, updates))
+    ;;
+
     let dispatch ?metadata conn query =
-      let%bind r, _ =
-        Deferred.Let_syntax.(
-          Rpc.Pipe_rpc.dispatch ?metadata rpc conn query >>| Or_error.join)
-      in
-      let%bind initial_state = read_state r in
-      let updates =
-        Pipe.create_reader ~close_on_exception:true (fun w ->
-          let open Deferred.Let_syntax in
-          let rec loop () =
-            match%bind
-              Deferred.choose
-                [ Deferred.choice (read_update r) Result.ok
-                ; Deferred.choice (Pipe.closed w) (fun () -> None)
-                ]
-            with
-            | Some update ->
-              let%bind () = Pipe.write_if_open w update in
-              loop ()
-            | None -> return ()
-          in
-          let%bind () = loop () in
-          Pipe.close_read r;
-          return ())
-      in
-      return (initial_state, updates)
+      dispatch' ?metadata conn query |> Deferred.map ~f:Or_error.join
     ;;
   end
 
@@ -302,7 +312,7 @@ module Make (X : S) = struct
   let rpc =
     (module X_plus : S_plus
       with type query = X.query
-       and type state  = X.state
+       and type state = X.state
        and type update = X.update)
   ;;
 
@@ -318,6 +328,10 @@ let description (type q s u) ((module X) : (q, s, u) t) = X.Underlying_rpc.descr
 
 let dispatch (type q s u) ?metadata ((module X) : (q, s, u) t) =
   X.Underlying_rpc.dispatch ?metadata
+;;
+
+let dispatch' (type q s u) ?metadata ((module X) : (q, s, u) t) =
+  X.Underlying_rpc.dispatch' ?metadata
 ;;
 
 let implement (type q s u) ?on_exception ((module X) : (q, s, u) t) =

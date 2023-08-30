@@ -5,8 +5,8 @@ open! Import
    tuples with arities no greater than 9 *)
 
 let test n =
-  let alist = List.init n ~f:Fn.id                  in
-  let repr  = Nested_tuple.For_testing.create alist in
+  let alist = List.init n ~f:Fn.id in
+  let repr = Nested_tuple.For_testing.create alist in
   print_s [%sexp (repr : int Nested_tuple.For_testing.t)]
 ;;
 

@@ -1,7 +1,6 @@
 open! Base
 open! Import
 
-
 let pcstr_tuple_core_types ~loc ~constructor_declaration =
   match constructor_declaration.pcd_args with
   | Pcstr_tuple core_types -> core_types
@@ -16,7 +15,7 @@ let pcstr_tuple_core_types ~loc ~constructor_declaration =
 
 let if_no_arg ~loc ~constructor_declaration ~then_ ~else_ =
   match pcstr_tuple_core_types ~loc ~constructor_declaration with
-  | []         -> then_ ()
+  | [] -> then_ ()
   | core_types -> else_ core_types
 ;;
 
@@ -54,60 +53,60 @@ let to_streamable_fun ~loc ~constructor_declarations =
     [%expr
       function
       | (_ : t) -> .]
-  | _  ->
+  | _ ->
     let cases =
       List.mapi
         constructor_declarations
         ~f:(fun constructor_index constructor_declaration ->
-          let lhs_tuple =
-            if_no_arg
-              ~loc
-              ~constructor_declaration
-              ~then_:(fun () -> None)
-              ~else_:(fun core_types ->
-                Some
-                  (ppat_tuple
-                     ~loc
-                     (List.mapi core_types ~f:(fun core_type_index (_ : core_type) ->
-                        let var =
-                          Loc.make ~loc (Helpers.lowercase_name_of_num core_type_index)
-                        in
-                        ppat_var ~loc var))))
-          in
-          let lhs_pattern =
-            ppat_construct
-              ~loc
-              (Loc.map constructor_declaration.pcd_name ~f:lident)
-              lhs_tuple
-          in
-          let rhs_tuple =
-            if_no_arg
-              ~loc
-              ~constructor_declaration
-              ~then_:(fun () -> [%expr ()])
-              ~else_:(fun core_types ->
-                pexp_tuple
-                  ~loc
-                  (List.mapi core_types ~f:(fun core_type_index (_ : core_type) ->
-                     let ident =
-                       Loc.make
-                         ~loc
-                         (lident (Helpers.lowercase_name_of_num core_type_index))
-                     in
-                     pexp_ident ~loc ident)))
-          in
-          let rhs_expression =
-            match List.length constructor_declarations with
-            (* Don't map to a variant if there is only one constructor. *)
-            | 1 -> rhs_tuple
-            (* Else, wrap the tuple in a variant. *)
-            | _ ->
-              pexp_variant
+        let lhs_tuple =
+          if_no_arg
+            ~loc
+            ~constructor_declaration
+            ~then_:(fun () -> None)
+            ~else_:(fun core_types ->
+              Some
+                (ppat_tuple
+                   ~loc
+                   (List.mapi core_types ~f:(fun core_type_index (_ : core_type) ->
+                      let var =
+                        Loc.make ~loc (Helpers.lowercase_name_of_num core_type_index)
+                      in
+                      ppat_var ~loc var))))
+        in
+        let lhs_pattern =
+          ppat_construct
+            ~loc
+            (Loc.map constructor_declaration.pcd_name ~f:lident)
+            lhs_tuple
+        in
+        let rhs_tuple =
+          if_no_arg
+            ~loc
+            ~constructor_declaration
+            ~then_:(fun () -> [%expr ()])
+            ~else_:(fun core_types ->
+              pexp_tuple
                 ~loc
-                (Helpers.uppercase_name_of_num constructor_index)
-                (Some rhs_tuple)
-          in
-          case ~lhs:lhs_pattern ~guard:None ~rhs:rhs_expression)
+                (List.mapi core_types ~f:(fun core_type_index (_ : core_type) ->
+                   let ident =
+                     Loc.make
+                       ~loc
+                       (lident (Helpers.lowercase_name_of_num core_type_index))
+                   in
+                   pexp_ident ~loc ident)))
+        in
+        let rhs_expression =
+          match List.length constructor_declarations with
+          (* Don't map to a variant if there is only one constructor. *)
+          | 1 -> rhs_tuple
+          (* Else, wrap the tuple in a variant. *)
+          | _ ->
+            pexp_variant
+              ~loc
+              (Helpers.uppercase_name_of_num constructor_index)
+              (Some rhs_tuple)
+        in
+        case ~lhs:lhs_pattern ~guard:None ~rhs:rhs_expression)
     in
     pexp_function ~loc cases
 ;;
@@ -115,59 +114,59 @@ let to_streamable_fun ~loc ~constructor_declarations =
 let of_streamable_fun ~loc ~constructor_declarations =
   match constructor_declarations with
   | [] -> [%expr Core.Nothing.unreachable_code]
-  | _  ->
+  | _ ->
     let cases =
       List.mapi
         constructor_declarations
         ~f:(fun constructor_index constructor_declaration ->
-          let lhs_tuple =
-            if_no_arg
-              ~loc
-              ~constructor_declaration
-              ~then_:(fun () -> [%pat? ()])
-              ~else_:(fun core_types ->
-                ppat_tuple
-                  ~loc
-                  (List.mapi core_types ~f:(fun core_type_index (_ : core_type) ->
-                     ppat_var
-                       ~loc
-                       (Loc.make ~loc (Helpers.lowercase_name_of_num core_type_index)))))
-          in
-          let lhs_pattern =
-            match List.length constructor_declarations with
-            (* Don't map to a variant if there is only one constructor. *)
-            | 1 -> lhs_tuple
-            | _ ->
-              (* Else, wrap the tuple in a variant. *)
-              ppat_variant
+        let lhs_tuple =
+          if_no_arg
+            ~loc
+            ~constructor_declaration
+            ~then_:(fun () -> [%pat? ()])
+            ~else_:(fun core_types ->
+              ppat_tuple
                 ~loc
-                (Helpers.uppercase_name_of_num constructor_index)
-                (Some lhs_tuple)
-          in
-          let rhs_tuple =
-            if_no_arg
-              ~loc
-              ~constructor_declaration
-              ~then_:(fun () -> None)
-              ~else_:(fun core_types ->
-                Some
-                  (pexp_tuple
+                (List.mapi core_types ~f:(fun core_type_index (_ : core_type) ->
+                   ppat_var
                      ~loc
-                     (List.mapi core_types ~f:(fun core_type_index (_ : core_type) ->
-                        let ident =
-                          Loc.make
-                            ~loc
-                            (lident (Helpers.lowercase_name_of_num core_type_index))
-                        in
-                        pexp_ident ~loc ident))))
-          in
-          let rhs_expression =
-            pexp_construct
+                     (Loc.make ~loc (Helpers.lowercase_name_of_num core_type_index)))))
+        in
+        let lhs_pattern =
+          match List.length constructor_declarations with
+          (* Don't map to a variant if there is only one constructor. *)
+          | 1 -> lhs_tuple
+          | _ ->
+            (* Else, wrap the tuple in a variant. *)
+            ppat_variant
               ~loc
-              (Loc.map constructor_declaration.pcd_name ~f:lident)
-              rhs_tuple
-          in
-          case ~lhs:lhs_pattern ~guard:None ~rhs:rhs_expression)
+              (Helpers.uppercase_name_of_num constructor_index)
+              (Some lhs_tuple)
+        in
+        let rhs_tuple =
+          if_no_arg
+            ~loc
+            ~constructor_declaration
+            ~then_:(fun () -> None)
+            ~else_:(fun core_types ->
+              Some
+                (pexp_tuple
+                   ~loc
+                   (List.mapi core_types ~f:(fun core_type_index (_ : core_type) ->
+                      let ident =
+                        Loc.make
+                          ~loc
+                          (lident (Helpers.lowercase_name_of_num core_type_index))
+                      in
+                      pexp_ident ~loc ident))))
+        in
+        let rhs_expression =
+          pexp_construct
+            ~loc
+            (Loc.map constructor_declaration.pcd_name ~f:lident)
+            rhs_tuple
+        in
+        case ~lhs:lhs_pattern ~guard:None ~rhs:rhs_expression)
     in
     pexp_function ~loc cases
 ;;

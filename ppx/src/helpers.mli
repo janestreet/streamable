@@ -5,10 +5,10 @@ open! Import
 val unsupported_use : loc:location -> why:string -> 'a
 
 (** pattern variable *)
-val pat_var         : loc:location -> label      -> pattern
+val pat_var : loc:location -> label -> pattern
 
 (** expression variable *)
-val exp_var         : loc:location -> label      -> expression
+val exp_var : loc:location -> label -> expression
 
 (** Gets the single [type t] declaration, and checks that it is valid.
     If it is not valid, it raises [unsupported_use]. *)
