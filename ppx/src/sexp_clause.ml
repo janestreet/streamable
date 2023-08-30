@@ -13,19 +13,19 @@ let maybe_match type_ (_ : Ctx.t) =
            ~first_module_name:"Sexp"
        with
        | false -> None
-       | true  -> Helpers.if_module_dot_t_then_module core_type)
+       | true -> Helpers.if_module_dot_t_then_module core_type)
     | _ -> None
   in
-  ({ children      = []
+  ({ children = []
    ; apply_functor =
        (fun ctx (_ : module_expr list) ->
-          Helpers.apply_streamable_dot
-            (* NOTE: There is no [Of_sexpable_rpc] since, by definition, there must be
+         Helpers.apply_streamable_dot
+           (* NOTE: There is no [Of_sexpable_rpc] since, by definition, there must be
                both [of_sexp] and [sexp_of]. As a result, explicitly ask for the functor
                without the "_rpc" suffix. *)
-            { ctx with rpc = false }
-            ~functor_name:[%string "Of_sexpable"]
-            ~arguments:[ pmod_ident ~loc:ctx.loc module_ ])
+           { ctx with rpc = false }
+           ~functor_name:[%string "Of_sexpable"]
+           ~arguments:[ pmod_ident ~loc:ctx.loc module_ ])
    }
-   : Clause.Match.t)
+    : Clause.Match.t)
 ;;

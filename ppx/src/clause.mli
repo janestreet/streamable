@@ -22,7 +22,7 @@ module Match : sig
       re-implement nor worry about that logic.
   *)
   type t =
-    { children      : Type_.t              list
+    { children : Type_.t list
     ; apply_functor : Ctx.t -> module_expr list -> module_expr
     }
 end

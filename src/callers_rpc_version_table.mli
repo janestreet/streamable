@@ -11,7 +11,7 @@ open! Import
 *)
 type 'a t
 
-val create             : rpc_name:string -> _ t
-val add_exn            : 'a t -> version:int -> 'a -> unit
+val create : rpc_name:string -> _ t
+val add_exn : 'a t -> version:int -> 'a -> unit
 val lookup_most_recent : 'a t -> callee_menu:Versioned_rpc.Menu.t -> 'a Or_error.t
-val data               : 'a t -> 'a list
+val data : 'a t -> 'a list

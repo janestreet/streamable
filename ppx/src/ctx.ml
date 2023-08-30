@@ -2,7 +2,7 @@ open! Base
 open! Import
 
 type t =
-  { loc     : location
-  ; rpc     : bool
+  { loc : location
+  ; rpc : bool
   ; version : Version.t
   }

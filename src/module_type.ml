@@ -56,7 +56,7 @@ module type S_rpc = sig
       type t [@@deriving bin_io]
     end
 
-    val create     : unit -> t
+    val create : unit -> t
     val apply_part : t -> Part.t -> t
   end
 
@@ -75,7 +75,7 @@ module type S_rpc_with_sexp_of_part = sig
       type t [@@deriving bin_io, sexp_of]
     end
 
-    val create     : unit -> t
+    val create : unit -> t
     val apply_part : t -> Part.t -> t
   end
 
@@ -94,7 +94,7 @@ module type S = sig
       type t [@@deriving bin_io, sexp]
     end
 
-    val create     : unit -> t
+    val create : unit -> t
     val apply_part : t -> Part.t -> t
   end
 
@@ -103,7 +103,7 @@ module type S = sig
 end
 
 (** check compatibility of S and S_rpc_with_sexp_of_part *)
-module Coerce1 (M : S) : S_rpc_with_sexp_of_part     = M
+module Coerce1 (M : S) : S_rpc_with_sexp_of_part = M
 
 (** check compatibility of S_rpc_with_sexp_of_part and S_rpc *)
 module Coerce2 (M : S_rpc_with_sexp_of_part) : S_rpc = M

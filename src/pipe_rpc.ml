@@ -1,7 +1,7 @@
 open! Core
 open! Async_kernel
 open! Import
-open  Deferred.Or_error.Let_syntax
+open Deferred.Or_error.Let_syntax
 include Pipe_rpc_intf
 
 (* Implementation-wise, a [Streamable.Pipe_rpc] is just a [Streamable.State_rpc] with a
@@ -10,7 +10,7 @@ type ('q, 'r) t = ('q, unit, 'r) State_rpc.t
 
 module Make (X : S) = struct
   module State_X = struct
-    let name    = X.name
+    let name = X.name
     let version = X.version
 
     type query = X.query [@@deriving bin_io]
@@ -57,5 +57,5 @@ let implement ?on_exception rpc f =
   State_rpc.implement ?on_exception rpc f
 ;;
 
-let bin_query_shape    = State_rpc.bin_query_shape
+let bin_query_shape = State_rpc.bin_query_shape
 let bin_response_shape = State_rpc.bin_update_shape

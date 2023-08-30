@@ -6,7 +6,7 @@ open! Async_kernel
 open! Import
 
 module type S = sig
-  val name    : string
+  val name : string
   val version : int
 
   type query [@@deriving bin_io]
@@ -44,7 +44,7 @@ module type Plain_rpc = sig
     -> ('conn_state -> 'q -> 'r Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t
 
-  val bin_query_shape    : _ t -> Bin_prot.Shape.t
+  val bin_query_shape : _ t -> Bin_prot.Shape.t
   val bin_response_shape : _ t -> Bin_prot.Shape.t
 
   module Make (X : S) : sig

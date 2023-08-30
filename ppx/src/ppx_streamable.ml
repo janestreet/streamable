@@ -3,12 +3,12 @@ open! Import
 
 module For_testing = struct
   module Nested_variant = Nested_variant
-  module Nested_tuple   = Nested_tuple
+  module Nested_tuple = Nested_tuple
 end
 
-let streamable_name  = "streamable"
-let atomic_arg_name  = "atomic"
-let rpc_arg_name     = "rpc"
+let streamable_name = "streamable"
+let atomic_arg_name = "atomic"
+let rpc_arg_name = "rpc"
 let version_arg_name = "version"
 
 module Signature = struct
@@ -20,19 +20,19 @@ module Signature = struct
       List.mapi
         type_dec.ptype_params
         ~f:(fun index (type_parameter, (variance, injectivity)) ->
-          let module_name =
-            Helpers.module_name_for_type_parameter
-              (match type_parameter.ptyp_desc with
-               | Ptyp_var name -> `Ptyp_var name
-               | Ptyp_any      -> `Ptyp_any index
-               | _             ->
-                 raise_s
-                   [%message
-                     "Unexpected type for type parameter"
-                       [%here]
-                       (string_of_core_type type_parameter)])
-          in
-          (type_parameter, (variance, injectivity)), module_name)
+        let module_name =
+          Helpers.module_name_for_type_parameter
+            (match type_parameter.ptyp_desc with
+             | Ptyp_var name -> `Ptyp_var name
+             | Ptyp_any -> `Ptyp_any index
+             | _ ->
+               raise_s
+                 [%message
+                   "Unexpected type for type parameter"
+                     [%here]
+                     (string_of_core_type type_parameter)])
+        in
+        (type_parameter, (variance, injectivity)), module_name)
     in
     let type_dec =
       { type_dec with
@@ -41,14 +41,14 @@ module Signature = struct
           List.map
             type_parameter_module_names
             ~f:(fun ((type_parameter, (variance, injectivity)), module_name) ->
-              let core_type =
-                { type_parameter with
-                  ptyp_desc =
-                    Ptyp_constr
-                      (Loc.make ~loc (Longident.Ldot (Lident module_name, "t")), [])
-                }
-              in
-              core_type, (variance, injectivity))
+            let core_type =
+              { type_parameter with
+                ptyp_desc =
+                  Ptyp_constr
+                    (Loc.make ~loc (Longident.Ldot (Lident module_name, "t")), [])
+              }
+            in
+            core_type, (variance, injectivity))
       }
     in
     let functor_ =
@@ -60,14 +60,14 @@ module Signature = struct
              streamable_module_type
              [ Pwith_type
                  ( Loc.make ~loc (Longident.Lident "t")
-                 , { ptype_name       = Loc.make ~loc "t"
-                   ; ptype_params     = []
-                   ; ptype_cstrs      = []
-                   ; ptype_kind       = Ptype_abstract
-                   ; ptype_private    = Public
-                   ; ptype_manifest   = Some (core_type_of_type_declaration type_dec)
+                 , { ptype_name = Loc.make ~loc "t"
+                   ; ptype_params = []
+                   ; ptype_cstrs = []
+                   ; ptype_kind = Ptype_abstract
+                   ; ptype_private = Public
+                   ; ptype_manifest = Some (core_type_of_type_declaration type_dec)
                    ; ptype_attributes = []
-                   ; ptype_loc        = loc
+                   ; ptype_loc = loc
                    } )
              ])
         ~f:(fun (_, module_name) functor_ ->
@@ -89,7 +89,7 @@ module Signature = struct
     let type_dec = Helpers.get_the_one_and_only_type_t type_decs ~loc in
     match type_dec.ptype_params with
     | _ :: _ -> [ generate_functor type_dec ~loc ~rpc ]
-    | []     ->
+    | [] ->
       let module_type = Helpers.streamable_module_type ~loc ~rpc in
       [ [%sigi: include [%m module_type] with type t := t] ]
   ;;
@@ -165,7 +165,7 @@ module Structure = struct
       List.filter_map clause_group ~f:(maybe_apply_clause ~type_ ~loc ~rpc ~version)
     with
     | [ module_expr ] -> Some module_expr
-    | []              -> None
+    | [] -> None
     | (_ : module_expr list) ->
       Location.raise_errorf
         ~loc
@@ -181,7 +181,7 @@ module Structure = struct
         ~f:(find_at_most_one_matching_clause ~type_ ~loc ~rpc ~version)
     with
     | Some module_expr -> module_expr
-    | None             ->
+    | None ->
       Location.raise_errorf
         ~loc
         "Handling of type `%s' is unknown."
@@ -204,7 +204,7 @@ module Structure = struct
         String.(attribute_name = "deriving" || attribute_name = "deriving_inline")
       with
       | false -> []
-      | true  ->
+      | true ->
         (match attribute.attr_payload with
          (* e.g. [@@deriving foo, bar] *)
          | PStr [ { pstr_desc = Pstr_eval ({ pexp_desc = Pexp_tuple exprs; _ }, _); _ } ]
@@ -216,10 +216,10 @@ module Structure = struct
   ;;
 
   let verify_required_derivers_appear_before
-        ~when_passed_args:streamable_args
-        ~loc
-        ~required_derivers
-        ~actual_derivers
+    ~when_passed_args:streamable_args
+    ~loc
+    ~required_derivers
+    ~actual_derivers
     =
     List.fold_until
       actual_derivers
@@ -228,7 +228,7 @@ module Structure = struct
       ~f:(fun required_derivers deriver ->
         match String.(deriver = streamable_name) with
         | false -> Continue (Set.remove required_derivers deriver)
-        | true  ->
+        | true ->
           if Set.is_empty required_derivers
           then Stop ()
           else (
@@ -249,7 +249,7 @@ module Structure = struct
   let generate_atomic type_dec ~loc ~rpc ~version =
     let required_derivers =
       match rpc with
-      | true  -> Set.of_list (module String) [ "bin_io"         ]
+      | true -> Set.of_list (module String) [ "bin_io" ]
       | false -> Set.of_list (module String) [ "bin_io"; "sexp" ]
     in
     let actual_derivers = extract_derivers type_dec in
@@ -276,15 +276,15 @@ module Structure = struct
   let rec generate_for_one_type type_dec ~loc ~atomic ~rpc ~version =
     match type_dec.ptype_params with
     | _ :: _ -> [ generate_functor type_dec ~atomic ~loc ~rpc ~version ]
-    | []     ->
+    | [] ->
       let module_expr =
         match atomic with
-        | true  -> generate_atomic type_dec ~loc ~rpc ~version
+        | true -> generate_atomic type_dec ~loc ~rpc ~version
         | false -> generate_streamable_module (Type_declaration type_dec) ~rpc ~version
       in
       [ [%stri
-        include
-          [%m
+          include
+            [%m
             Helpers.apply_streamable_dot
               { loc; rpc; version }
               ~functor_name:"Remove_t"
@@ -298,8 +298,8 @@ module Structure = struct
         Helpers.module_name_for_type_parameter
           (match type_parameter.ptyp_desc with
            | Ptyp_var name -> `Ptyp_var name
-           | Ptyp_any      -> `Ptyp_any index
-           | _             ->
+           | Ptyp_any -> `Ptyp_any index
+           | _ ->
              raise_s
                [%message
                  "Unexpected type for type parameter"
@@ -337,10 +337,10 @@ module Structure = struct
         type_parameter_module_names
         ~init:functor_body
         ~f:(fun module_name functor_ ->
-          pmod_functor
-            ~loc
-            (Named (Loc.make ~loc (Some module_name), streamable_module_type))
-            functor_)
+        pmod_functor
+          ~loc
+          (Named (Loc.make ~loc (Some module_name), streamable_module_type))
+          functor_)
     in
     pstr_module
       ~loc
@@ -354,7 +354,7 @@ module Structure = struct
     let version =
       match version with
       | Some version -> version
-      | None         ->
+      | None ->
         Helpers.unsupported_use
           ~loc
           ~why:

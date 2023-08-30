@@ -11,13 +11,13 @@ let type_parameter ~core_type =
          ~first_module_name:"Or_error"
      with
      | false -> None
-     | true  -> Some type_parameter)
+     | true -> Some type_parameter)
   | _ -> None
 ;;
 
 let maybe_match type_ { Ctx.version; _ } =
-  let%bind core_type      = Type_.match_core_type type_ in
-  let%map  type_parameter = type_parameter ~core_type   in
+  let%bind core_type = Type_.match_core_type type_ in
+  let%map type_parameter = type_parameter ~core_type in
   ({ children =
        [ Core_type type_parameter
        ; Core_type
@@ -29,7 +29,7 @@ let maybe_match type_ { Ctx.version; _ } =
        ]
    ; apply_functor =
        (fun ctx children ->
-          Helpers.apply_streamable_dot ctx ~functor_name:"Of_result" ~arguments:children)
+         Helpers.apply_streamable_dot ctx ~functor_name:"Of_result" ~arguments:children)
    }
-   : Clause.Match.t)
+    : Clause.Match.t)
 ;;
