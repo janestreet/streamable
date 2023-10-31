@@ -94,6 +94,33 @@ module type State_rpc = sig
     val flushed : _ t -> unit Deferred.t
     val is_closed : _ t -> bool
 
+    (** [Expert] allows the serialisation of parts to occur separately from the writing
+        of parts. While you are able to write any bigstring to the pipe rpc with this
+        interface, you should only write state parts until you finalise the state, and
+        then after that you should only write update parts. *)
+    module Expert : sig
+      val create_state_part
+        :  state_bin_writer:'state_part Bin_prot.Type_class.writer
+        -> 'state_part
+        -> Bigstring.t
+
+      val finalise_state_message : Bigstring.t lazy_t
+
+      val create_update_part
+        :  update_bin_writer:'update_part Bin_prot.Type_class.writer
+        -> 'update_part
+        -> Bigstring.t
+
+      val finalise_update_message : Bigstring.t lazy_t
+
+      val write_without_pushback
+        :  ?pos:int
+        -> ?len:int
+        -> _ t
+        -> Bigstring.t
+        -> [ `Closed | `Ok ]
+    end
+
     module Group : sig
       type ('state_part, 'update_part) direct_writer := ('state_part, 'update_part) t
       type ('state_part, 'update_part) t

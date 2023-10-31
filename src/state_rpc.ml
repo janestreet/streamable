@@ -109,6 +109,41 @@ module Direct_writer = struct
   let flushed t = T.flushed t.writer
   let is_closed t = T.is_closed t.writer
 
+  module Expert = struct
+    (* Nothing.bin_writer_t is used here so we don't have to ask for an update_bin_writer
+       when serialising a state part and vice versa *)
+    let create_state_part ~state_bin_writer state_part =
+      Bin_prot.Writer.to_bigstring
+        (Response.bin_writer_t state_bin_writer Nothing.bin_writer_t)
+        (State (Part state_part))
+    ;;
+
+    let finalise_state_message =
+      lazy
+        (Bin_prot.Writer.to_bigstring
+           (Response.bin_writer_t Nothing.bin_writer_t Nothing.bin_writer_t)
+           (State Done))
+    ;;
+
+    let create_update_part ~update_bin_writer update_part =
+      Bin_prot.Writer.to_bigstring
+        (Response.bin_writer_t Nothing.bin_writer_t update_bin_writer)
+        (Update (Part update_part))
+    ;;
+
+    let finalise_update_message =
+      lazy
+        (Bin_prot.Writer.to_bigstring
+           (Response.bin_writer_t Nothing.bin_writer_t Nothing.bin_writer_t)
+           (Update Done))
+    ;;
+
+    let write_without_pushback ?(pos = 0) ?len t buf =
+      let len = Option.value_or_thunk len ~default:(fun () -> Bigstring.length buf) in
+      T.Expert.write_without_pushback t.writer ~buf ~pos ~len
+    ;;
+  end
+
   module Group = struct
     module T_group = Rpc.Pipe_rpc.Direct_stream_writer.Group
 

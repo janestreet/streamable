@@ -12,7 +12,40 @@ let plain_impl_to_state f conn query =
   Deferred.Or_error.return (response, empty)
 ;;
 
+module Update = Main.Of_atomic (Nothing)
+
 type ('q, 'r) t = ('q, 'r, Nothing.t) State_rpc.t
+
+module Direct_writer = struct
+  type 'response_part t =
+    ('response_part, Update.Intermediate.Part.t) State_rpc.Direct_writer.t
+
+  let write_response_without_pushback_exn =
+    State_rpc.Direct_writer.write_state_without_pushback_exn
+  ;;
+
+  let finalise_response_without_pushback_exn =
+    State_rpc.Direct_writer.finalise_state_without_pushback_exn
+  ;;
+
+  let is_response_finalised = State_rpc.Direct_writer.is_state_finalised
+  let response_finalised = State_rpc.Direct_writer.state_finalised
+  let close = State_rpc.Direct_writer.close
+  let closed = State_rpc.Direct_writer.closed
+  let flushed = State_rpc.Direct_writer.flushed
+  let is_closed = State_rpc.Direct_writer.is_closed
+
+  module Expert = struct
+    let create_response_part ~bin_writer response_part =
+      State_rpc.Direct_writer.Expert.create_state_part
+        ~state_bin_writer:bin_writer
+        response_part
+    ;;
+
+    let finalise_response_message = State_rpc.Direct_writer.Expert.finalise_state_message
+    let write_without_pushback = State_rpc.Direct_writer.Expert.write_without_pushback
+  end
+end
 
 module Make (X : S) = struct
   module State_X = struct
@@ -26,7 +59,7 @@ module Make (X : S) = struct
 
     type update = Nothing.t
 
-    module Update = Main.Of_atomic (Nothing)
+    module Update = Update
 
     let client_pushes_back = X.client_pushes_back
   end
@@ -35,6 +68,7 @@ module Make (X : S) = struct
 
   let rpc = M.rpc
   let implement' ?on_exception f = M.implement' ?on_exception (plain_impl_to_state f)
+  let implement_direct ?on_exception f = M.implement_direct ?on_exception f
 end
 
 let description = State_rpc.description
