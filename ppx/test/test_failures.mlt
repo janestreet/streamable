@@ -50,7 +50,8 @@ module Version_argument_must_be_specified = struct
   type t = int [@@deriving streamable ~version:"1"]
 end
 
-[%%expect {|
+[%%expect
+  {|
 Line _, characters _-_:
 Error: integer expected
 |}]
@@ -59,7 +60,8 @@ module Handling_of_certain_parameterized_types_is_unknown = struct
   type t = int Queue.t [@@deriving streamable ~version:1]
 end
 
-[%%expect {|
+[%%expect
+  {|
 Line _, characters _-_:
 Error: Unbound module Queue.Make_streamable
 |}]
@@ -69,7 +71,8 @@ module Atomic_attribute_is_not_used_on_hashtbl_key = struct
   [@@deriving streamable ~version:1]
 end
 
-[%%expect {|
+[%%expect
+  {|
 Line _, characters _-_:
 Error: Attribute `streamable.atomic' was not used
 |}]
@@ -79,7 +82,8 @@ module Atomic_attribute_is_not_used_on_map_key = struct
   [@@deriving streamable ~version:1]
 end
 
-[%%expect {|
+[%%expect
+  {|
 Line _, characters _-_:
 Error: Attribute `streamable.atomic' was not used
 |}]
@@ -89,7 +93,8 @@ module Handling_of_non_core_primitive_is_unknown = struct
   type t   = foo [@@deriving streamable ~version:1]
 end
 
-[%%expect {|
+[%%expect
+  {|
 Line _, characters _-_:
 Error: Handling of type `foo' is unknown.
 |}]
@@ -162,7 +167,8 @@ module Unused_attributes = struct
   [@@deriving bin_io, sexp, streamable ~atomic ~version:1]
 end
 
-[%%expect {|
+[%%expect
+  {|
 Line _, characters _-_:
 Error: Attribute `streamable.atomic' was not used
 |}]

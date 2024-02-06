@@ -1,3 +1,5 @@
-(library (name ppx_streamable_test)
+(library
+ (name ppx_streamable_test)
  (libraries core expect_test_helpers_core ppx_streamable streamable)
- (preprocess (pps ppx_jane ppx_streamable -pretty)))
+ (preprocess
+  (pps ppx_jane ppx_streamable -pretty)))

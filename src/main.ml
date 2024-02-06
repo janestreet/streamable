@@ -249,25 +249,73 @@ module Stable = struct
     module V1 (X : S_rpc) : sig
       type t = X.t
 
+      module Part : sig
+        type t =
+          { parts : X.Intermediate.Part.t Fqueue.t
+          ; bin_size : int option
+          }
+      end
+
       include
         S_rpc
           with type t := t
            and type Intermediate.t = X.Intermediate.t
-           and type Intermediate.Part.t = X.Intermediate.Part.t Fqueue.t
+           and type Intermediate.Part.t = Part.t
     end = struct
       type t = X.t
+
+      module Part = struct
+        module Format = struct
+          type t = X.Intermediate.Part.t Fqueue.t [@@deriving bin_io]
+        end
+
+        module T = struct
+          type t =
+            { parts : Format.t
+            ; bin_size : int option
+                (** [bin_size] is a cached bin_size that we compute when we produce [t],
+                otherwise we end up calling [bin_size] on the parts twice unnecessarily.
+                It's optional because if [t] is produced by deserializing a sexp, we won't
+                know the bin size, so we have to fall back to the regular size computation
+                in that case. *)
+            }
+
+          let bin_shape_t = Format.bin_shape_t
+
+          let bin_size_t t =
+            match t.bin_size with
+            | None -> Format.bin_size_t t.parts
+            | Some size -> size
+          ;;
+
+          let bin_write_t buf ~pos t = Format.bin_write_t buf ~pos t.parts
+
+          let bin_read_t buf ~pos_ref =
+            let start_pos = !pos_ref in
+            let parts = Format.bin_read_t buf ~pos_ref in
+            let bin_size = !pos_ref - start_pos in
+            { parts; bin_size = Some bin_size }
+          ;;
+
+          let __bin_read_t__ (_ : Bigstring.t) ~pos_ref:(_ : int ref) (_ : int) =
+            failwith
+              "vtag_read not implemented for Streamable.Packed_rpc.Intermediate.Part"
+          ;;
+        end
+
+        include T
+        include Bin_prot.Utils.Of_minimal (T)
+      end
 
       module Intermediate = struct
         type t = X.Intermediate.t
 
-        module Part = struct
-          type t = X.Intermediate.Part.t Fqueue.t [@@deriving bin_io]
-        end
+        module Part = Part
 
         let create = X.Intermediate.create
 
-        let apply_part inter part =
-          Fqueue.fold part ~init:inter ~f:X.Intermediate.apply_part
+        let apply_part inter (part : Part.t) =
+          Fqueue.fold part.parts ~init:inter ~f:X.Intermediate.apply_part
         ;;
       end
 
@@ -282,22 +330,32 @@ module Stable = struct
       (* 2^17 gives us some room to grow in outer parts *)
 
       let to_parts t =
-        (* serialized length of fqueue (estimate) *)
-        let init = Fqueue.empty, 1 + Bin_prot.Utils.size_header_length in
+        let estimated_header_length = 1 + Bin_prot.Utils.size_header_length in
+        (* serialized length of parts in the fqueue (must be exactly correct) *)
+        let init = Fqueue.empty, 0 in
+        let part_from_state parts total_bin_size : Intermediate.Part.t =
+          let part_bin_size =
+            (* The serialization format for [Fqueue] is the length encoded as a bin prot
+               int, and then each of the serializations of the individual parts. *)
+            total_bin_size + bin_size_int (Fqueue.length parts)
+          in
+          { parts; bin_size = Some part_bin_size }
+        in
         Sequence.unfold_with_and_finish
           (X.to_parts t)
           ~init
           ~running_step:(fun (buffered_parts, buffered_len) xpart ->
             let new_parts = Fqueue.enqueue buffered_parts xpart in
             let new_len = buffered_len + X.Intermediate.Part.bin_size_t xpart in
-            if new_len >= pack_threshold
-            then Yield { value = new_parts; state = init }
+            if new_len >= pack_threshold - estimated_header_length
+            then Yield { value = part_from_state new_parts new_len; state = init }
             else Skip { state = new_parts, new_len })
-          ~inner_finished:fst
-          ~finishing_step:(fun buffered_parts ->
+          ~inner_finished:Fn.id
+          ~finishing_step:(fun (buffered_parts, buffered_len) ->
             if Fqueue.is_empty buffered_parts
             then Done
-            else Yield { value = buffered_parts; state = Fqueue.empty })
+            else
+              Yield { value = part_from_state buffered_parts buffered_len; state = init })
       ;;
 
       let finalize = X.finalize
@@ -309,13 +367,25 @@ module Stable = struct
       type t = X.t
 
       include S with type t := t
-    end =
-      Add_sexp.V1
-        (Packed_rpc.V1
-           (X))
-           (struct
-             type t = X.Intermediate.Part.t Fqueue.t [@@deriving sexp]
-           end)
+    end = struct
+      module T = Packed_rpc.V1 (X)
+
+      include
+        Add_sexp.V1
+          (T)
+          (struct
+            type t = T.Part.t =
+              { parts : X.Intermediate.Part.t Fqueue.t
+              ; bin_size : int option
+              }
+
+            let sexp_of_t t = [%sexp_of: X.Intermediate.Part.t Fqueue.t] t.parts
+
+            let t_of_sexp sexp =
+              { parts = [%of_sexp: X.Intermediate.Part.t Fqueue.t] sexp; bin_size = None }
+            ;;
+          end)
+    end
   end
 
   module Of_key_value_intermediate_part = struct
