@@ -1,22 +1,23 @@
 open! Base
 open! Import
 
-let pcstr_tuple_core_types ~loc ~constructor_declaration =
+let pcstr_core_types ~constructor_declaration =
   match constructor_declaration.pcd_args with
   | Pcstr_tuple core_types -> core_types
-  | Pcstr_record _ ->
-    Helpers.unsupported_use
-      ~loc
-      ~why:
-        [%string
-          "variant constructor `%{constructor_declaration.pcd_name.txt}' contains an \
-           anonymous record argument, which isn't supported"]
+  | Pcstr_record labels -> List.map labels ~f:(fun label_decl -> label_decl.pld_type)
 ;;
 
-let if_no_arg ~loc ~constructor_declaration ~then_ ~else_ =
-  match pcstr_tuple_core_types ~loc ~constructor_declaration with
+let if_no_arg ~constructor_declaration ~then_ ~else_ =
+  match pcstr_core_types ~constructor_declaration with
   | [] -> then_ ()
   | core_types -> else_ core_types
+;;
+
+let match_no_arg_tuple_or_record ~constructor_declaration ~no_arg ~tuple ~record =
+  match constructor_declaration.pcd_args with
+  | Pcstr_tuple [] -> no_arg ()
+  | Pcstr_tuple core_types -> tuple core_types
+  | Pcstr_record labels -> record labels
 ;;
 
 let constructor_declarations type_dec =
@@ -28,7 +29,6 @@ let constructor_declarations type_dec =
 let children ~loc ~constructor_declarations =
   List.map constructor_declarations ~f:(fun constructor_declaration ->
     if_no_arg
-      ~loc
       ~constructor_declaration
       ~else_:(fun core_types -> ptyp_tuple ~loc core_types)
       ~then_:(fun () ->
@@ -58,12 +58,11 @@ let to_streamable_fun ~loc ~constructor_declarations =
       List.mapi
         constructor_declarations
         ~f:(fun constructor_index constructor_declaration ->
-        let lhs_tuple =
-          if_no_arg
-            ~loc
+        let lhs_subpattern =
+          match_no_arg_tuple_or_record
             ~constructor_declaration
-            ~then_:(fun () -> None)
-            ~else_:(fun core_types ->
+            ~no_arg:(fun () -> None)
+            ~tuple:(fun core_types ->
               Some
                 (ppat_tuple
                    ~loc
@@ -72,19 +71,27 @@ let to_streamable_fun ~loc ~constructor_declarations =
                         Loc.make ~loc (Helpers.lowercase_name_of_num core_type_index)
                       in
                       ppat_var ~loc var))))
+            ~record:(fun label_decalarations ->
+              Some
+                (ppat_record
+                   ~loc
+                   (List.map label_decalarations ~f:(fun label_declaration ->
+                      let field = Loc.map ~f:lident label_declaration.pld_name in
+                      let pattern = Loc.make ~loc (Loc.txt label_declaration.pld_name) in
+                      field, ppat_var ~loc pattern))
+                   Closed))
         in
         let lhs_pattern =
           ppat_construct
             ~loc
             (Loc.map constructor_declaration.pcd_name ~f:lident)
-            lhs_tuple
+            lhs_subpattern
         in
         let rhs_tuple =
-          if_no_arg
-            ~loc
+          match_no_arg_tuple_or_record
             ~constructor_declaration
-            ~then_:(fun () -> [%expr ()])
-            ~else_:(fun core_types ->
+            ~no_arg:(fun () -> [%expr ()])
+            ~tuple:(fun core_types ->
               pexp_tuple
                 ~loc
                 (List.mapi core_types ~f:(fun core_type_index (_ : core_type) ->
@@ -94,6 +101,11 @@ let to_streamable_fun ~loc ~constructor_declarations =
                        (lident (Helpers.lowercase_name_of_num core_type_index))
                    in
                    pexp_ident ~loc ident)))
+            ~record:(fun label_declarations ->
+              pexp_tuple
+                ~loc
+                (List.map label_declarations ~f:(fun label_declaration ->
+                   pexp_ident ~loc (Loc.map label_declaration.pld_name ~f:lident))))
         in
         let rhs_expression =
           match List.length constructor_declarations with
@@ -120,17 +132,21 @@ let of_streamable_fun ~loc ~constructor_declarations =
         constructor_declarations
         ~f:(fun constructor_index constructor_declaration ->
         let lhs_tuple =
-          if_no_arg
-            ~loc
+          match_no_arg_tuple_or_record
             ~constructor_declaration
-            ~then_:(fun () -> [%pat? ()])
-            ~else_:(fun core_types ->
+            ~no_arg:(fun () -> [%pat? ()])
+            ~tuple:(fun core_types ->
               ppat_tuple
                 ~loc
                 (List.mapi core_types ~f:(fun core_type_index (_ : core_type) ->
                    ppat_var
                      ~loc
                      (Loc.make ~loc (Helpers.lowercase_name_of_num core_type_index)))))
+            ~record:(fun label_declarations ->
+              ppat_tuple
+                ~loc
+                (List.map label_declarations ~f:(fun label_declaration ->
+                   ppat_var ~loc label_declaration.pld_name)))
         in
         let lhs_pattern =
           match List.length constructor_declarations with
@@ -143,12 +159,11 @@ let of_streamable_fun ~loc ~constructor_declarations =
               (Helpers.uppercase_name_of_num constructor_index)
               (Some lhs_tuple)
         in
-        let rhs_tuple =
-          if_no_arg
-            ~loc
+        let rhs_subexpression =
+          match_no_arg_tuple_or_record
             ~constructor_declaration
-            ~then_:(fun () -> None)
-            ~else_:(fun core_types ->
+            ~no_arg:(fun () -> None)
+            ~tuple:(fun core_types ->
               Some
                 (pexp_tuple
                    ~loc
@@ -159,12 +174,20 @@ let of_streamable_fun ~loc ~constructor_declarations =
                           (lident (Helpers.lowercase_name_of_num core_type_index))
                       in
                       pexp_ident ~loc ident))))
+            ~record:(fun label_declarations ->
+              Some
+                (pexp_record
+                   ~loc
+                   (List.map label_declarations ~f:(fun label_declaration ->
+                      let ident = Loc.map label_declaration.pld_name ~f:lident in
+                      ident, pexp_ident ~loc ident))
+                   None))
         in
         let rhs_expression =
           pexp_construct
             ~loc
             (Loc.map constructor_declaration.pcd_name ~f:lident)
-            rhs_tuple
+            rhs_subexpression
         in
         case ~lhs:lhs_pattern ~guard:None ~rhs:rhs_expression)
     in

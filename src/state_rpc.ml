@@ -9,14 +9,12 @@ module type S_plus = sig
 
   module Underlying_rpc : sig
     val dispatch
-      :  ?metadata:Rpc_metadata.t
-      -> Rpc.Connection.t
+      :  Rpc.Connection.t
       -> query
       -> (state * update Pipe.Reader.t) Deferred.Or_error.t
 
     val dispatch'
-      :  ?metadata:Rpc_metadata.t
-      -> Rpc.Connection.t
+      :  Rpc.Connection.t
       -> query
       -> (state * update Pipe.Reader.t) Or_error.t Deferred.Or_error.t
 
@@ -306,8 +304,8 @@ module Make (X : S) = struct
           | State _ -> Or_error.errorf "Streamable.State_rpc: incomplete update message")
     ;;
 
-    let dispatch' ?metadata conn query =
-      let%bind server_response = Rpc.Pipe_rpc.dispatch ?metadata rpc conn query in
+    let dispatch' conn query =
+      let%bind server_response = Rpc.Pipe_rpc.dispatch rpc conn query in
       match server_response with
       | Error _ as error -> return error
       | Ok (r, _) ->
@@ -334,9 +332,7 @@ module Make (X : S) = struct
         return (Ok (initial_state, updates))
     ;;
 
-    let dispatch ?metadata conn query =
-      dispatch' ?metadata conn query |> Deferred.map ~f:Or_error.join
-    ;;
+    let dispatch conn query = dispatch' conn query |> Deferred.map ~f:Or_error.join
   end
 
   module X_plus = struct
@@ -360,14 +356,8 @@ module Make (X : S) = struct
 end
 
 let description (type q s u) ((module X) : (q, s, u) t) = X.Underlying_rpc.description
-
-let dispatch (type q s u) ?metadata ((module X) : (q, s, u) t) =
-  X.Underlying_rpc.dispatch ?metadata
-;;
-
-let dispatch' (type q s u) ?metadata ((module X) : (q, s, u) t) =
-  X.Underlying_rpc.dispatch' ?metadata
-;;
+let dispatch (type q s u) ((module X) : (q, s, u) t) = X.Underlying_rpc.dispatch
+let dispatch' (type q s u) ((module X) : (q, s, u) t) = X.Underlying_rpc.dispatch'
 
 let implement (type q s u) ?on_exception ((module X) : (q, s, u) t) =
   X.Underlying_rpc.implement ?on_exception

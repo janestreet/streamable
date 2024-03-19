@@ -40,14 +40,12 @@ end
 
 let description = State_rpc.description
 
-let dispatch' ?metadata rpc conn query =
-  let%bind server_response = State_rpc.dispatch' ?metadata rpc conn query in
+let dispatch' rpc conn query =
+  let%bind server_response = State_rpc.dispatch' rpc conn query in
   Or_error.map server_response ~f:(fun ((), response) -> response) |> return
 ;;
 
-let dispatch ?metadata rpc conn query =
-  dispatch' ?metadata rpc conn query |> Deferred.map ~f:Or_error.join
-;;
+let dispatch rpc conn query = dispatch' rpc conn query |> Deferred.map ~f:Or_error.join
 
 let implement ?on_exception rpc f =
   let f conn query =

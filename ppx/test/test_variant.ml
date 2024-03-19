@@ -226,6 +226,94 @@ include Test.Is_S_rpc (struct
   [@@@end]
 end)
 
+(* 3 constructors, 1 no-arg, 1 tuple, 1 record *)
+include Test.Is_S (struct
+  type t =
+    | X
+    | Y of string * int
+    | Z of
+        { field1 : string
+        ; field2 : bool
+        }
+  [@@deriving_inline streamable ~version:1]
+
+  include
+    Streamable.Stable.V1.Remove_t
+      (Streamable.Stable.V1.Of_streamable
+         (Streamable.Stable.V1.Of_variant3
+            (Streamable.Stable.V1.Of_atomic
+               (Core.Unit))
+               (Streamable.Stable.V1.Of_tuple2
+                  (Streamable.Stable.V1.Of_atomic
+                     (Core.String))
+                     (Streamable.Stable.V1.Of_atomic (Core.Int)))
+            (Streamable.Stable.V1.Of_tuple2
+               (Streamable.Stable.V1.Of_atomic
+                  (Core.String))
+                  (Streamable.Stable.V1.Of_atomic (Core.Bool))))
+            (struct
+              type nonrec t = t
+
+              let to_streamable = function
+                | X -> `A ()
+                | Y (a, b) -> `B (a, b)
+                | Z { field1; field2 } -> `C (field1, field2)
+              ;;
+
+              let of_streamable = function
+                | `A () -> X
+                | `B (a, b) -> Y (a, b)
+                | `C (field1, field2) -> Z { field1; field2 }
+              ;;
+            end))
+
+  [@@@end]
+end)
+
+(* 3 constructors, 1 no-arg, 1 tuple, 1 record (rpc) *)
+include Test.Is_S_rpc (struct
+  type t =
+    | X
+    | Y of string * int
+    | Z of
+        { field1 : string
+        ; field2 : bool
+        }
+  [@@deriving_inline streamable ~rpc ~version:1]
+
+  include
+    Streamable.Stable.V1.Remove_t_rpc
+      (Streamable.Stable.V1.Of_streamable_rpc
+         (Streamable.Stable.V1.Of_variant3_rpc
+            (Streamable.Stable.V1.Of_atomic_rpc
+               (Core.Unit))
+               (Streamable.Stable.V1.Of_tuple2_rpc
+                  (Streamable.Stable.V1.Of_atomic_rpc
+                     (Core.String))
+                     (Streamable.Stable.V1.Of_atomic_rpc (Core.Int)))
+            (Streamable.Stable.V1.Of_tuple2_rpc
+               (Streamable.Stable.V1.Of_atomic_rpc
+                  (Core.String))
+                  (Streamable.Stable.V1.Of_atomic_rpc (Core.Bool))))
+            (struct
+              type nonrec t = t
+
+              let to_streamable = function
+                | X -> `A ()
+                | Y (a, b) -> `B (a, b)
+                | Z { field1; field2 } -> `C (field1, field2)
+              ;;
+
+              let of_streamable = function
+                | `A () -> X
+                | `B (a, b) -> Y (a, b)
+                | `C (field1, field2) -> Z { field1; field2 }
+              ;;
+            end))
+
+  [@@@end]
+end)
+
 (* Large variant *)
 include Test.Is_S (struct
   type t =
@@ -244,6 +332,10 @@ include Test.Is_S (struct
     | M of bool
     | N of float
     | O of int * string
+    | P of
+        { foo : int
+        ; bar : bool
+        }
   [@@deriving_inline streamable ~version:1]
 
   include
@@ -274,14 +366,18 @@ include Test.Is_S (struct
                               (Streamable.Stable.V1.Of_atomic (Core.String)))
                      (Streamable.Stable.V1.Of_atomic (Core.Unit))
                      (Streamable.Stable.V1.Of_atomic (Core.Int)))
-               (Streamable.Stable.V1.Of_variant3
+               (Streamable.Stable.V1.Of_variant4
                   (Streamable.Stable.V1.Of_atomic
                      (Core.Bool))
                      (Streamable.Stable.V1.Of_atomic (Core.Float))
                   (Streamable.Stable.V1.Of_tuple2
                      (Streamable.Stable.V1.Of_atomic
                         (Core.Int))
-                        (Streamable.Stable.V1.Of_atomic (Core.String)))))
+                        (Streamable.Stable.V1.Of_atomic (Core.String)))
+                  (Streamable.Stable.V1.Of_tuple2
+                     (Streamable.Stable.V1.Of_atomic
+                        (Core.Int))
+                        (Streamable.Stable.V1.Of_atomic (Core.Bool)))))
                (struct
                  type t =
                    [ `A of Core.Unit.t
@@ -299,6 +395,7 @@ include Test.Is_S (struct
                    | `M of bool
                    | `N of float
                    | `O of int * string
+                   | `P of int * bool
                    ]
 
                  let to_streamable = function
@@ -317,6 +414,7 @@ include Test.Is_S (struct
                    | `M m -> `D (`A m)
                    | `N n -> `D (`B n)
                    | `O o -> `D (`C o)
+                   | `P p -> `D (`D p)
                  ;;
 
                  let of_streamable = function
@@ -335,6 +433,7 @@ include Test.Is_S (struct
                    | `D (`A m) -> `M m
                    | `D (`B n) -> `N n
                    | `D (`C o) -> `O o
+                   | `D (`D p) -> `P p
                  ;;
                end))
                (struct
@@ -356,6 +455,7 @@ include Test.Is_S (struct
                    | M a -> `M a
                    | N a -> `N a
                    | O (a, b) -> `O (a, b)
+                   | P { foo; bar } -> `P (foo, bar)
                  ;;
 
                  let of_streamable = function
@@ -374,6 +474,7 @@ include Test.Is_S (struct
                    | `M a -> M a
                    | `N a -> N a
                    | `O (a, b) -> O (a, b)
+                   | `P (foo, bar) -> P { foo; bar }
                  ;;
                end))
 

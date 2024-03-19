@@ -25,15 +25,13 @@ module type Pipe_rpc = sig
   val description : _ t -> Rpc.Description.t
 
   val dispatch
-    :  ?metadata:Rpc_metadata.t
-    -> ('q, 'r) t
+    :  ('q, 'r) t
     -> Rpc.Connection.t
     -> 'q
     -> 'r Pipe.Reader.t Deferred.Or_error.t
 
   val dispatch'
-    :  ?metadata:Rpc_metadata.t
-    -> ('q, 'r) t
+    :  ('q, 'r) t
     -> Rpc.Connection.t
     -> 'q
     -> 'r Pipe.Reader.t Or_error.t Deferred.Or_error.t

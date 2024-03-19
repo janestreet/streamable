@@ -21,21 +21,6 @@ Line _, characters _-_:
 Error: ppx_streamable: only types named [t] are supported.
 |}]
 
-module Constructor_arguments_cannot_be_anonymous_records = struct
-  type t =
-    | A of
-        { a : int
-        ; b : string
-        }
-  [@@deriving streamable ~version:1]
-end
-
-[%%expect
-  {|
-Line _, characters _-_:
-Error: ppx_streamable: variant constructor `A' contains an anonymous record argument, which isn't supported.
-|}]
-
 module Version_argument_must_be_specified = struct
   type t = int [@@deriving streamable]
 end

@@ -29,15 +29,13 @@ module type State_rpc = sig
   val description : _ t -> Rpc.Description.t
 
   val dispatch
-    :  ?metadata:Rpc_metadata.t
-    -> ('q, 's, 'u) t
+    :  ('q, 's, 'u) t
     -> Rpc.Connection.t
     -> 'q
     -> ('s * 'u Pipe.Reader.t) Deferred.Or_error.t
 
   val dispatch'
-    :  ?metadata:Rpc_metadata.t
-    -> ('q, 's, 'u) t
+    :  ('q, 's, 'u) t
     -> Rpc.Connection.t
     -> 'q
     -> ('s * 'u Pipe.Reader.t) Or_error.t Deferred.Or_error.t

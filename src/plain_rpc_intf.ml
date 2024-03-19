@@ -23,17 +23,10 @@ module type Plain_rpc = sig
   type ('q, 'r) t
 
   val description : _ t -> Rpc.Description.t
-
-  val dispatch
-    :  ?metadata:Rpc_metadata.t
-    -> ('q, 'r) t
-    -> Rpc.Connection.t
-    -> 'q
-    -> 'r Deferred.Or_error.t
+  val dispatch : ('q, 'r) t -> Rpc.Connection.t -> 'q -> 'r Deferred.Or_error.t
 
   val dispatch'
-    :  ?metadata:Rpc_metadata.t
-    -> ('q, 'r) t
+    :  ('q, 'r) t
     -> Rpc.Connection.t
     -> 'q
     -> 'r Or_error.t Deferred.Or_error.t
