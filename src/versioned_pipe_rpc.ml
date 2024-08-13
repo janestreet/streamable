@@ -7,11 +7,11 @@ module Caller_converts = struct
   module type S = Caller_converts
 
   module Make (Model : sig
-    val name : string
+      val name : string
 
-    type query
-    type response
-  end) =
+      type query
+      type response
+    end) =
   struct
     let name = Model.name
 
@@ -33,23 +33,23 @@ module Caller_converts = struct
     ;;
 
     module Register (Version : sig
-      type query [@@deriving bin_io]
-      type response
+        type query [@@deriving bin_io]
+        type response
 
-      module Response : Main.S_rpc with type t = response
+        module Response : Main.S_rpc with type t = response
 
-      val version : int
-      val query_of_model : Model.query -> query
-      val model_of_response : response -> Model.response
-      val client_pushes_back : bool
-    end) =
+        val version : int
+        val query_of_model : Model.query -> query
+        val model_of_response : response -> Model.response
+        val client_pushes_back : bool
+      end) =
     struct
       (* introduce [rpc] *)
       include Pipe_rpc.Make (struct
-        let name = name
+          let name = name
 
-        include Version
-      end)
+          include Version
+        end)
 
       let version = Version.version
 
@@ -73,11 +73,11 @@ module Callee_converts = struct
   module type S = Callee_converts
 
   module Make (Model : sig
-    val name : string
+      val name : string
 
-    type query
-    type response
-  end) =
+      type query
+      type response
+    end) =
   struct
     let name = Model.name
 
@@ -102,23 +102,23 @@ module Callee_converts = struct
     ;;
 
     module Register (Version : sig
-      type query [@@deriving bin_io]
-      type response
+        type query [@@deriving bin_io]
+        type response
 
-      module Response : Main.S_rpc with type t = response
+        module Response : Main.S_rpc with type t = response
 
-      val version : int
-      val model_of_query : query -> Model.query
-      val response_of_model : Model.response -> response
-      val client_pushes_back : bool
-    end) =
+        val version : int
+        val model_of_query : query -> Model.query
+        val response_of_model : Model.response -> response
+        val client_pushes_back : bool
+      end) =
     struct
       (* introduce [rpc] *)
       include Pipe_rpc.Make (struct
-        let name = name
+          let name = name
 
-        include Version
-      end)
+          include Version
+        end)
 
       let version = Version.version
 
@@ -148,61 +148,61 @@ module Both_convert = struct
   module type S = Both_convert
 
   module Make (Model : sig
-    val name : string
+      val name : string
 
-    module Caller : sig
-      type query
-      type response
-    end
+      module Caller : sig
+        type query
+        type response
+      end
 
-    module Callee : sig
-      type query
-      type response
-    end
-  end) =
+      module Callee : sig
+        type query
+        type response
+      end
+    end) =
   struct
     let name = Model.name
 
     module Caller = Caller_converts.Make (struct
-      let name = name
+        let name = name
 
-      include Model.Caller
-    end)
+        include Model.Caller
+      end)
 
     module Callee = Callee_converts.Make (struct
-      let name = name
+        let name = name
 
-      include Model.Callee
-    end)
+        include Model.Callee
+      end)
 
     module Register (Version : sig
-      val version : int
+        val version : int
 
-      type query [@@deriving bin_io]
-      type response
+        type query [@@deriving bin_io]
+        type response
 
-      module Response : Main.S_rpc with type t = response
+        module Response : Main.S_rpc with type t = response
 
-      val query_of_caller_model : Model.Caller.query -> query
-      val callee_model_of_query : query -> Model.Callee.query
-      val response_of_callee_model : Model.Callee.response -> response
-      val caller_model_of_response : response -> Model.Caller.response
-      val client_pushes_back : bool
-    end) =
+        val query_of_caller_model : Model.Caller.query -> query
+        val callee_model_of_query : query -> Model.Callee.query
+        val response_of_callee_model : Model.Callee.response -> response
+        val caller_model_of_response : response -> Model.Caller.response
+        val client_pushes_back : bool
+      end) =
     struct
       include Callee.Register (struct
-        include Version
+          include Version
 
-        let model_of_query = callee_model_of_query
-        let response_of_model = response_of_callee_model
-      end)
+          let model_of_query = callee_model_of_query
+          let response_of_model = response_of_callee_model
+        end)
 
       include Caller.Register (struct
-        include Version
+          include Version
 
-        let query_of_model = query_of_caller_model
-        let model_of_response = caller_model_of_response
-      end)
+          let query_of_model = query_of_caller_model
+          let model_of_response = caller_model_of_response
+        end)
     end
 
     let dispatch_multi = Caller.dispatch_multi

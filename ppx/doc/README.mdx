@@ -184,7 +184,7 @@ Error: The functor application is ill-typed.
               val bin_size_t : t Bin_prot.Size.sizer
               val bin_write_t : t Bin_prot.Write.writer
               val bin_writer_t : t Bin_prot.Type_class.writer
-              val __bin_read_t__ : (int -> t) Bin_prot.Read.reader
+              val __bin_read_t__ : t Bin_prot.Read.vtag_reader
               val bin_read_t : t Bin_prot.Read.reader
               val bin_reader_t : t Bin_prot.Reader.t
               val bin_t : t Bin_prot.Type_class.t

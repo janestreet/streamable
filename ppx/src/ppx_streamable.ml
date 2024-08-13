@@ -20,19 +20,19 @@ module Signature = struct
       List.mapi
         type_dec.ptype_params
         ~f:(fun index (type_parameter, (variance, injectivity)) ->
-        let module_name =
-          Helpers.module_name_for_type_parameter
-            (match type_parameter.ptyp_desc with
-             | Ptyp_var name -> `Ptyp_var name
-             | Ptyp_any -> `Ptyp_any index
-             | _ ->
-               raise_s
-                 [%message
-                   "Unexpected type for type parameter"
-                     [%here]
-                     (string_of_core_type type_parameter)])
-        in
-        (type_parameter, (variance, injectivity)), module_name)
+          let module_name =
+            Helpers.module_name_for_type_parameter
+              (match type_parameter.ptyp_desc with
+               | Ptyp_var name -> `Ptyp_var name
+               | Ptyp_any -> `Ptyp_any index
+               | _ ->
+                 raise_s
+                   [%message
+                     "Unexpected type for type parameter"
+                       [%here]
+                       (string_of_core_type type_parameter)])
+          in
+          (type_parameter, (variance, injectivity)), module_name)
     in
     let type_dec =
       { type_dec with
@@ -41,14 +41,14 @@ module Signature = struct
           List.map
             type_parameter_module_names
             ~f:(fun ((type_parameter, (variance, injectivity)), module_name) ->
-            let core_type =
-              { type_parameter with
-                ptyp_desc =
-                  Ptyp_constr
-                    (Loc.make ~loc (Longident.Ldot (Lident module_name, "t")), [])
-              }
-            in
-            core_type, (variance, injectivity))
+              let core_type =
+                { type_parameter with
+                  ptyp_desc =
+                    Ptyp_constr
+                      (Loc.make ~loc (Longident.Ldot (Lident module_name, "t")), [])
+                }
+              in
+              core_type, (variance, injectivity))
       }
     in
     let functor_ =
@@ -337,10 +337,10 @@ module Structure = struct
         type_parameter_module_names
         ~init:functor_body
         ~f:(fun module_name functor_ ->
-        pmod_functor
-          ~loc
-          (Named (Loc.make ~loc (Some module_name), streamable_module_type))
-          functor_)
+          pmod_functor
+            ~loc
+            (Named (Loc.make ~loc (Some module_name), streamable_module_type))
+            functor_)
     in
     pstr_module
       ~loc

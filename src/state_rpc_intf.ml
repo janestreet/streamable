@@ -187,7 +187,7 @@ module type State_rpc = sig
           -> X.query
           -> (X.State.Intermediate.Part.t Pipe.Reader.t
              * X.Update.Intermediate.Part.t Pipe.Reader.t Pipe.Reader.t)
-             Deferred.Or_error.t)
+               Deferred.Or_error.t)
       -> 'conn_state Rpc.Implementation.t
 
     val implement_direct

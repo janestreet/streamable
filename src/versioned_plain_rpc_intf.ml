@@ -64,23 +64,23 @@ module type Versioned_plain_rpc = sig
     module type S = Caller_converts
 
     module Make (Model : sig
-      val name : string
+        val name : string
 
-      type query
-      type response
-    end) : sig
-      module Register (Version : sig
-        val version : int
-
-        type query [@@deriving bin_io]
+        type query
         type response
-
-        module Response : Main.S_rpc with type t = response
-
-        val query_of_model : Model.query -> query
-        val model_of_response : response -> Model.response
-        val client_pushes_back : bool
       end) : sig
+      module Register (Version : sig
+          val version : int
+
+          type query [@@deriving bin_io]
+          type response
+
+          module Response : Main.S_rpc with type t = response
+
+          val query_of_model : Model.query -> query
+          val model_of_response : response -> Model.response
+          val client_pushes_back : bool
+        end) : sig
         val rpc : (Version.query, Version.response) Plain_rpc.t
 
         (** [implement'] is like [Plain_rpc.implement rpc] except that it allows the
@@ -101,23 +101,23 @@ module type Versioned_plain_rpc = sig
     module type S = Callee_converts
 
     module Make (Model : sig
-      val name : string
+        val name : string
 
-      type query
-      type response
-    end) : sig
-      module Register (Version : sig
-        val version : int
-
-        type query [@@deriving bin_io]
+        type query
         type response
-
-        module Response : Main.S_rpc with type t = response
-
-        val model_of_query : query -> Model.query
-        val response_of_model : Model.response -> response
-        val client_pushes_back : bool
       end) : sig
+      module Register (Version : sig
+          val version : int
+
+          type query [@@deriving bin_io]
+          type response
+
+          module Response : Main.S_rpc with type t = response
+
+          val model_of_query : query -> Model.query
+          val response_of_model : Model.response -> response
+          val client_pushes_back : bool
+        end) : sig
         val rpc : (Version.query, Version.response) Plain_rpc.t
 
         (** [implement'] is like [Plain_rpc.implement rpc] except that it allows the
@@ -138,34 +138,34 @@ module type Versioned_plain_rpc = sig
     module type S = Both_convert
 
     module Make (Model : sig
-      val name : string
+        val name : string
 
-      module Caller : sig
-        type query
-        type response
-      end
+        module Caller : sig
+          type query
+          type response
+        end
 
-      module Callee : sig
-        type query
-        type response
-      end
-    end) : sig
+        module Callee : sig
+          type query
+          type response
+        end
+      end) : sig
       open Model
 
       module Register (Version : sig
-        val version : int
+          val version : int
 
-        type query [@@deriving bin_io]
-        type response
+          type query [@@deriving bin_io]
+          type response
 
-        module Response : Main.S_rpc with type t = response
+          module Response : Main.S_rpc with type t = response
 
-        val query_of_caller_model : Caller.query -> query
-        val callee_model_of_query : query -> Callee.query
-        val response_of_callee_model : Callee.response -> response
-        val caller_model_of_response : response -> Caller.response
-        val client_pushes_back : bool
-      end) : sig
+          val query_of_caller_model : Caller.query -> query
+          val callee_model_of_query : query -> Callee.query
+          val response_of_callee_model : Callee.response -> response
+          val caller_model_of_response : response -> Caller.response
+          val client_pushes_back : bool
+        end) : sig
         val rpc : (Version.query, Version.response) Plain_rpc.t
 
         (** [implement'] is like [Plain_rpc.implement rpc] except that it allows the
@@ -180,10 +180,10 @@ module type Versioned_plain_rpc = sig
 
       include
         S
-          with type caller_query := Caller.query
-          with type caller_response := Caller.response
-          with type callee_query := Callee.query
-          with type callee_response := Callee.response
+        with type caller_query := Caller.query
+        with type caller_response := Caller.response
+        with type callee_query := Callee.query
+        with type callee_response := Callee.response
     end
   end
 end

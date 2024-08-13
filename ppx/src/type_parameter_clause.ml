@@ -14,5 +14,5 @@ let maybe_match type_ (_ : Ctx.t) =
          assert (List.is_empty children);
          pmod_ident ~loc (Loc.make ~loc (Longident.Lident module_name)))
    }
-    : Clause.Match.t)
+   : Clause.Match.t)
 ;;

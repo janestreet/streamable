@@ -27,5 +27,5 @@ let maybe_match type_ (_ : Ctx.t) =
            ~functor_name:[%string "Of_sexpable"]
            ~arguments:[ pmod_ident ~loc:ctx.loc module_ ])
    }
-    : Clause.Match.t)
+   : Clause.Match.t)
 ;;

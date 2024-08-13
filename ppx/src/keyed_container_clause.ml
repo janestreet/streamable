@@ -74,6 +74,6 @@ module Make (X : X) = struct
              ~functor_name:[%string "Of_%{String.lowercase X.Parameterized_form.name}"]
              ~arguments:(pmod_ident ~loc (Loc.make ~loc atomic_longident) :: children))
      }
-      : Clause.Match.t)
+     : Clause.Match.t)
   ;;
 end

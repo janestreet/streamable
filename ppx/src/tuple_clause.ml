@@ -16,5 +16,5 @@ let maybe_match type_ (_ : Ctx.t) =
          let children = List.zip_exn tuple_core_types children_modules in
          Nested_tuple.streamable_of_tuple ctx children)
    }
-    : Clause.Match.t)
+   : Clause.Match.t)
 ;;

@@ -14,5 +14,5 @@ let maybe_match type_ (_ : Ctx.t) =
            ~functor_name:"Of_atomic"
            ~arguments:[ pmod_ident ~loc:ctx.loc longident_loc ])
    }
-    : Clause.Match.t)
+   : Clause.Match.t)
 ;;

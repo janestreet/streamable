@@ -2,6 +2,6 @@
  (name ppx_streamable)
  (public_name streamable.ppx)
  (kind ppx_deriver)
- (libraries base ppxlib)
+ (libraries base ppxlib ppxlib_jane)
  (preprocess
   (pps ppxlib.metaquot ppx_jane)))

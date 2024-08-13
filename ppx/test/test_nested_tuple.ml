@@ -11,7 +11,7 @@ let test n =
 ;;
 
 let%expect_test "nesting" =
-  require_does_raise ~hide_positions:true [%here] (fun () -> test 0);
+  require_does_raise ~hide_positions:true (fun () -> test 0);
   [%expect
     {|
     (ppx/ppx_streamable/src/nested_tuple.ml:LINE:COL

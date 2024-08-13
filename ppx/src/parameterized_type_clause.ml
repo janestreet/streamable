@@ -29,5 +29,5 @@ let maybe_match type_ (_ : Ctx.t) =
          let functor_ = pmod_ident ~loc functor_name in
          List.fold children ~init:functor_ ~f:(pmod_apply ~loc))
    }
-    : Clause.Match.t)
+   : Clause.Match.t)
 ;;

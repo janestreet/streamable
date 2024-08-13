@@ -7,12 +7,12 @@ module Caller_converts = struct
   module type S = Caller_converts
 
   module Make (Model : sig
-    val name : string
+      val name : string
 
-    type query
-    type state
-    type update
-  end) =
+      type query
+      type state
+      type update
+    end) =
   struct
     let name = Model.name
 
@@ -20,7 +20,7 @@ module Caller_converts = struct
       Rpc.Connection.t
       -> Model.query
       -> (Model.state * Model.update Or_error.t Pipe.Reader.t) Or_error.t
-         Deferred.Or_error.t
+           Deferred.Or_error.t
 
     let registry : dispatch_fun Callers_rpc_version_table.t =
       Callers_rpc_version_table.create ~rpc_name:name
@@ -39,28 +39,28 @@ module Caller_converts = struct
     ;;
 
     module Register (Version : sig
-      type query [@@deriving bin_io]
-      type state
+        type query [@@deriving bin_io]
+        type state
 
-      module State : Main.S_rpc with type t = state
+        module State : Main.S_rpc with type t = state
 
-      type update
+        type update
 
-      module Update : Main.S_rpc with type t = update
+        module Update : Main.S_rpc with type t = update
 
-      val version : int
-      val query_of_model : Model.query -> query
-      val model_of_state : state -> Model.state
-      val model_of_update : update -> Model.update
-      val client_pushes_back : bool
-    end) =
+        val version : int
+        val query_of_model : Model.query -> query
+        val model_of_state : state -> Model.state
+        val model_of_update : update -> Model.update
+        val client_pushes_back : bool
+      end) =
     struct
       (* introduce [rpc] *)
       include State_rpc.Make (struct
-        let name = name
+          let name = name
 
-        include Version
-      end)
+          include Version
+        end)
 
       let version = Version.version
 
@@ -87,12 +87,12 @@ module Callee_converts = struct
   module type S = Callee_converts
 
   module Make (Model : sig
-    val name : string
+      val name : string
 
-    type query
-    type state
-    type update
-  end) =
+      type query
+      type state
+      type update
+    end) =
   struct
     let name = Model.name
 
@@ -117,28 +117,28 @@ module Callee_converts = struct
     ;;
 
     module Register (Version : sig
-      type query [@@deriving bin_io]
-      type state
+        type query [@@deriving bin_io]
+        type state
 
-      module State : Main.S_rpc with type t = state
+        module State : Main.S_rpc with type t = state
 
-      type update
+        type update
 
-      module Update : Main.S_rpc with type t = update
+        module Update : Main.S_rpc with type t = update
 
-      val version : int
-      val model_of_query : query -> Model.query
-      val state_of_model : Model.state -> state
-      val update_of_model : Model.update -> update
-      val client_pushes_back : bool
-    end) =
+        val version : int
+        val model_of_query : query -> Model.query
+        val state_of_model : Model.state -> state
+        val update_of_model : Model.update -> update
+        val client_pushes_back : bool
+      end) =
     struct
       (* introduce [rpc] *)
       include State_rpc.Make (struct
-        let name = name
+          let name = name
 
-        include Version
-      end)
+          include Version
+        end)
 
       let version = Version.version
 
@@ -169,71 +169,71 @@ module Both_convert = struct
   module type S = Both_convert
 
   module Make (Model : sig
-    val name : string
+      val name : string
 
-    module Caller : sig
-      type query
-      type state
-      type update
-    end
+      module Caller : sig
+        type query
+        type state
+        type update
+      end
 
-    module Callee : sig
-      type query
-      type state
-      type update
-    end
-  end) =
+      module Callee : sig
+        type query
+        type state
+        type update
+      end
+    end) =
   struct
     let name = Model.name
 
     module Caller = Caller_converts.Make (struct
-      let name = name
+        let name = name
 
-      include Model.Caller
-    end)
+        include Model.Caller
+      end)
 
     module Callee = Callee_converts.Make (struct
-      let name = name
+        let name = name
 
-      include Model.Callee
-    end)
+        include Model.Callee
+      end)
 
     module Register (Version : sig
-      val version : int
+        val version : int
 
-      type query [@@deriving bin_io]
-      type state
+        type query [@@deriving bin_io]
+        type state
 
-      module State : Main.S_rpc with type t = state
+        module State : Main.S_rpc with type t = state
 
-      type update
+        type update
 
-      module Update : Main.S_rpc with type t = update
+        module Update : Main.S_rpc with type t = update
 
-      val query_of_caller_model : Model.Caller.query -> query
-      val callee_model_of_query : query -> Model.Callee.query
-      val state_of_callee_model : Model.Callee.state -> state
-      val caller_model_of_state : state -> Model.Caller.state
-      val update_of_callee_model : Model.Callee.update -> update
-      val caller_model_of_update : update -> Model.Caller.update
-      val client_pushes_back : bool
-    end) =
+        val query_of_caller_model : Model.Caller.query -> query
+        val callee_model_of_query : query -> Model.Callee.query
+        val state_of_callee_model : Model.Callee.state -> state
+        val caller_model_of_state : state -> Model.Caller.state
+        val update_of_callee_model : Model.Callee.update -> update
+        val caller_model_of_update : update -> Model.Caller.update
+        val client_pushes_back : bool
+      end) =
     struct
       include Callee.Register (struct
-        include Version
+          include Version
 
-        let model_of_query = callee_model_of_query
-        let state_of_model = state_of_callee_model
-        let update_of_model = update_of_callee_model
-      end)
+          let model_of_query = callee_model_of_query
+          let state_of_model = state_of_callee_model
+          let update_of_model = update_of_callee_model
+        end)
 
       include Caller.Register (struct
-        include Version
+          include Version
 
-        let query_of_model = query_of_caller_model
-        let model_of_state = caller_model_of_state
-        let model_of_update = caller_model_of_update
-      end)
+          let query_of_model = query_of_caller_model
+          let model_of_state = caller_model_of_state
+          let model_of_update = caller_model_of_update
+        end)
     end
 
     let dispatch_multi = Caller.dispatch_multi

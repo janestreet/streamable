@@ -77,9 +77,9 @@ module Stable = struct
   module Add_sexp = struct
     module V1 (S : S_rpc) (Part_sexp : Sexpable.S with type t := S.Intermediate.Part.t) :
       S
-        with type t = S.t
-         and type Intermediate.t = S.Intermediate.t
-         and type Intermediate.Part.t = S.Intermediate.Part.t = struct
+      with type t = S.t
+       and type Intermediate.t = S.Intermediate.t
+       and type Intermediate.Part.t = S.Intermediate.Part.t = struct
       include S
 
       module Intermediate = struct
@@ -99,9 +99,9 @@ module Stable = struct
   module Of_only_functions_rpc = struct
     module V1 (X : S_only_functions_rpc) :
       S_rpc
-        with type t := X.t
-        with type Intermediate.t = X.Intermediate.t
-        with type Intermediate.Part.t = X.Intermediate.Part.t = struct
+      with type t := X.t
+      with type Intermediate.t = X.Intermediate.t
+      with type Intermediate.Part.t = X.Intermediate.Part.t = struct
       module Intermediate = struct
         type t = X.Intermediate.t
 
@@ -133,9 +133,9 @@ module Stable = struct
   module Of_only_functions = struct
     module V1 (X : S_only_functions) :
       S
-        with type t := X.t
-        with type Intermediate.t = X.Intermediate.t
-        with type Intermediate.Part.t = X.Intermediate.Part.t =
+      with type t := X.t
+      with type Intermediate.t = X.Intermediate.t
+      with type Intermediate.Part.t = X.Intermediate.Part.t =
       Add_sexp.V1
         (struct
           type t = X.t
@@ -147,8 +147,8 @@ module Stable = struct
 
   module Of_atomic_rpc = struct
     module V1 (A : sig
-      type t [@@deriving bin_io]
-    end) : S_rpc with type t = A.t and type Intermediate.Part.t = A.t = struct
+        type t [@@deriving bin_io]
+      end) : S_rpc with type t = A.t and type Intermediate.Part.t = A.t = struct
       type t = A.t
 
       module Intermediate = struct
@@ -171,23 +171,24 @@ module Stable = struct
 
   module Of_atomic = struct
     module V1 (A : sig
-      type t [@@deriving bin_io, sexp]
-    end) : S with type t = A.t =
+        type t [@@deriving bin_io, sexp]
+      end) : S with type t = A.t =
       Add_sexp.V1 (Of_atomic_rpc.V1 (A)) (A)
   end
 
   module Of_streamable_rpc = struct
     module V1
-      (Streamable : S_rpc) (X : sig
-        type t
+        (Streamable : S_rpc)
+        (X : sig
+           type t
 
-        val to_streamable : t -> Streamable.t
-        val of_streamable : Streamable.t -> t
-      end) :
+           val to_streamable : t -> Streamable.t
+           val of_streamable : Streamable.t -> t
+         end) :
       S_rpc
-        with type t = X.t
-         and type Intermediate.t = Streamable.Intermediate.t
-         and type Intermediate.Part.t = Streamable.Intermediate.Part.t = struct
+      with type t = X.t
+       and type Intermediate.t = Streamable.Intermediate.t
+       and type Intermediate.Part.t = Streamable.Intermediate.Part.t = struct
       type t = X.t
 
       module Intermediate = Streamable.Intermediate
@@ -199,20 +200,22 @@ module Stable = struct
 
   module Of_streamable = struct
     module V1
-      (Streamable : S) (X : sig
-        type t
+        (Streamable : S)
+        (X : sig
+           type t
 
-        val to_streamable : t -> Streamable.t
-        val of_streamable : Streamable.t -> t
-      end) : S with type t = X.t =
+           val to_streamable : t -> Streamable.t
+           val of_streamable : Streamable.t -> t
+         end) : S with type t = X.t =
       Add_sexp.V1 (Of_streamable_rpc.V1 (Streamable) (X)) (Streamable.Intermediate.Part)
   end
 
-  module Checked (Limit : sig
-    val max_intermediate_part_bin_size : int
-    val here : Source_code_position.t
-  end)
-  (X : S) : S with type t = X.t = struct
+  module Checked
+      (Limit : sig
+         val max_intermediate_part_bin_size : int
+         val here : Source_code_position.t
+       end)
+      (X : S) : S with type t = X.t = struct
     include X
 
     let here = Limit.here
@@ -221,27 +224,27 @@ module Stable = struct
     let to_parts t =
       X.to_parts t
       |> Sequence.mapi ~f:(fun part_index part ->
-           let the_part_bin_size = Intermediate.Part.bin_size_t part in
-           if the_part_bin_size > max_part_bin_size
-           then (
-             let intermediate_part_bin_shape : Sexp.t =
-               (* Bin_shape.t sexps contain a global counter on bin shapes, which is too
+        let the_part_bin_size = Intermediate.Part.bin_size_t part in
+        if the_part_bin_size > max_part_bin_size
+        then (
+          let intermediate_part_bin_shape : Sexp.t =
+            (* Bin_shape.t sexps contain a global counter on bin shapes, which is too
                flaky to display in test output *)
-               if am_running_test
-               then [%sexp "{omitted-in-test}"]
-               else [%sexp (Intermediate.Part.bin_shape_t : Bin_shape.t)]
-             in
-             raise_s
-               [%message
-                 "Streamable intermediate part exceeded size threshold.  Depending on \
-                  the max size, this might indicate that serialization or transmission \
-                  will fail."
-                   (here : Source_code_position.t)
-                   (part_index : int)
-                   (the_part_bin_size : int)
-                   (max_part_bin_size : int)
-                   (intermediate_part_bin_shape : Sexp.t)]);
-           part)
+            if am_running_test
+            then [%sexp "{omitted-in-test}"]
+            else [%sexp (Intermediate.Part.bin_shape_t : Bin_shape.t)]
+          in
+          raise_s
+            [%message
+              "Streamable intermediate part exceeded size threshold.  Depending on the \
+               max size, this might indicate that serialization or transmission will \
+               fail."
+                (here : Source_code_position.t)
+                (part_index : int)
+                (the_part_bin_size : int)
+                (max_part_bin_size : int)
+                (intermediate_part_bin_shape : Sexp.t)]);
+        part)
     ;;
   end
 
@@ -258,9 +261,9 @@ module Stable = struct
 
       include
         S_rpc
-          with type t := t
-           and type Intermediate.t = X.Intermediate.t
-           and type Intermediate.Part.t = Part.t
+        with type t := t
+         and type Intermediate.t = X.Intermediate.t
+         and type Intermediate.Part.t = Part.t
     end = struct
       type t = X.t
 
@@ -273,7 +276,7 @@ module Stable = struct
           type t =
             { parts : Format.t
             ; bin_size : int option
-                (** [bin_size] is a cached bin_size that we compute when we produce [t],
+            (** [bin_size] is a cached bin_size that we compute when we produce [t],
                 otherwise we end up calling [bin_size] on the parts twice unnecessarily.
                 It's optional because if [t] is produced by deserializing a sexp, we won't
                 know the bin size, so we have to fall back to the regular size computation
@@ -399,15 +402,16 @@ module Stable = struct
 
   module Of_key_value_store_rpc = struct
     module V1
-      (Key : Stable_without_of_sexp)
-      (Data : S_rpc) (Store : sig
-        type t
+        (Key : Stable_without_of_sexp)
+        (Data : S_rpc)
+        (Store : sig
+           type t
 
-        val create : unit -> t
-        val mem : t -> Key.t -> bool
-        val set : t -> key:Key.t -> data:Data.t -> t
-        val to_sequence : t -> (Key.t * Data.t) Sequence.t
-      end) =
+           val create : unit -> t
+           val mem : t -> Key.t -> bool
+           val set : t -> key:Key.t -> data:Data.t -> t
+           val to_sequence : t -> (Key.t * Data.t) Sequence.t
+         end) =
     struct
       type t = Store.t
 
@@ -447,24 +451,25 @@ module Stable = struct
       let to_parts t =
         Store.to_sequence t
         |> Sequence.concat_map ~f:(fun (key, data) ->
-             Sequence.cons
-               (Intermediate.Part.add_key key)
-               (Sequence.map ~f:Intermediate.Part.add_part (Data.to_parts data)))
+          Sequence.cons
+            (Intermediate.Part.add_key key)
+            (Sequence.map ~f:Intermediate.Part.add_part (Data.to_parts data)))
       ;;
     end
   end
 
   module Of_key_value_store = struct
     module V1
-      (Key : Stable)
-      (Data : S) (Store : sig
-        type t
+        (Key : Stable)
+        (Data : S)
+        (Store : sig
+           type t
 
-        val create : unit -> t
-        val mem : t -> Key.t -> bool
-        val set : t -> key:Key.t -> data:Data.t -> t
-        val to_sequence : t -> (Key.t * Data.t) Sequence.t
-      end) =
+           val create : unit -> t
+           val mem : t -> Key.t -> bool
+           val set : t -> key:Key.t -> data:Data.t -> t
+           val to_sequence : t -> (Key.t * Data.t) Sequence.t
+         end) =
     struct
       module Plain = Of_key_value_store_rpc.V1 (Key) (Data) (Store)
 
@@ -552,11 +557,12 @@ module Stable = struct
     end
   end
 
-  module Hashtbl_store (Key : sig
-    include Stable_without_of_sexp
-    include Hashtbl.Key_plain with type t := t
-  end)
-  (Data : S_rpc) =
+  module Hashtbl_store
+      (Key : sig
+         include Stable_without_of_sexp
+         include Hashtbl.Key_plain with type t := t
+       end)
+      (Data : S_rpc) =
   struct
     type t = (Key.t, Data.t) Hashtbl.t
 
@@ -572,11 +578,12 @@ module Stable = struct
   end
 
   module Of_hashtbl_rpc = struct
-    module V1_unpacked (Key : sig
-      include Stable_without_of_sexp
-      include Hashtbl.Key_plain with type t := t
-    end)
-    (Data : S_rpc) : sig
+    module V1_unpacked
+        (Key : sig
+           include Stable_without_of_sexp
+           include Hashtbl.Key_plain with type t := t
+         end)
+        (Data : S_rpc) : sig
       type t = (Key.t, Data.t) Hashtbl.t
 
       include S_rpc with type t := t
@@ -584,20 +591,22 @@ module Stable = struct
       include Of_key_value_store_rpc.V1 (Key) (Data) (Hashtbl_store (Key) (Data))
     end
 
-    module V1 (Key : sig
-      include Hashtbl.Key_plain
-      include Stable_without_of_sexp with type t := t
-    end)
-    (Data : S_rpc) =
+    module V1
+        (Key : sig
+           include Hashtbl.Key_plain
+           include Stable_without_of_sexp with type t := t
+         end)
+        (Data : S_rpc) =
       Packed_rpc.V1 (V1_unpacked (Key) (Data))
   end
 
   module Of_hashtbl = struct
-    module V1_unpacked (Key : sig
-      include Stable
-      include Hashtbl.Key with type t := t
-    end)
-    (Data : S) : sig
+    module V1_unpacked
+        (Key : sig
+           include Stable
+           include Hashtbl.Key with type t := t
+         end)
+        (Data : S) : sig
       type t = (Key.t, Data.t) Hashtbl.t
 
       include S with type t := t
@@ -605,11 +614,12 @@ module Stable = struct
       include Of_key_value_store.V1 (Key) (Data) (Hashtbl_store (Key) (Data))
     end
 
-    module V1 (Key : sig
-      include Hashtbl.Key
-      include Stable with type t := t
-    end)
-    (Data : S) =
+    module V1
+        (Key : sig
+           include Hashtbl.Key
+           include Stable with type t := t
+         end)
+        (Data : S) =
       Packed.V1 (V1_unpacked (Key) (Data))
   end
 
@@ -940,7 +950,13 @@ module Stable = struct
   end
 
   module Of_tuple6_rpc = struct
-    module V1 (A : S_rpc) (B : S_rpc) (C : S_rpc) (D : S_rpc) (E : S_rpc) (F : S_rpc) : sig
+    module V1
+        (A : S_rpc)
+        (B : S_rpc)
+        (C : S_rpc)
+        (D : S_rpc)
+        (E : S_rpc)
+        (F : S_rpc) : sig
       type t = A.t * B.t * C.t * D.t * E.t * F.t
 
       module Intermediate : sig
@@ -1045,13 +1061,13 @@ module Stable = struct
 
   module Of_tuple7_rpc = struct
     module V1
-      (A : S_rpc)
-      (B : S_rpc)
-      (C : S_rpc)
-      (D : S_rpc)
-      (E : S_rpc)
-      (F : S_rpc)
-      (G : S_rpc) : sig
+        (A : S_rpc)
+        (B : S_rpc)
+        (C : S_rpc)
+        (D : S_rpc)
+        (E : S_rpc)
+        (F : S_rpc)
+        (G : S_rpc) : sig
       type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t
 
       module Intermediate : sig
@@ -1169,14 +1185,14 @@ module Stable = struct
 
   module Of_tuple8_rpc = struct
     module V1
-      (A : S_rpc)
-      (B : S_rpc)
-      (C : S_rpc)
-      (D : S_rpc)
-      (E : S_rpc)
-      (F : S_rpc)
-      (G : S_rpc)
-      (H : S_rpc) : sig
+        (A : S_rpc)
+        (B : S_rpc)
+        (C : S_rpc)
+        (D : S_rpc)
+        (E : S_rpc)
+        (F : S_rpc)
+        (G : S_rpc)
+        (H : S_rpc) : sig
       type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t
 
       module Intermediate : sig
@@ -1302,15 +1318,15 @@ module Stable = struct
 
   module Of_tuple9_rpc = struct
     module V1
-      (A : S_rpc)
-      (B : S_rpc)
-      (C : S_rpc)
-      (D : S_rpc)
-      (E : S_rpc)
-      (F : S_rpc)
-      (G : S_rpc)
-      (H : S_rpc)
-      (I : S_rpc) : sig
+        (A : S_rpc)
+        (B : S_rpc)
+        (C : S_rpc)
+        (D : S_rpc)
+        (E : S_rpc)
+        (F : S_rpc)
+        (G : S_rpc)
+        (H : S_rpc)
+        (I : S_rpc) : sig
       type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t * I.t
 
       module Intermediate : sig
@@ -1416,7 +1432,16 @@ module Stable = struct
   end
 
   module Of_tuple9 = struct
-    module V1 (A : S) (B : S) (C : S) (D : S) (E : S) (F : S) (G : S) (H : S) (I : S) : sig
+    module V1
+        (A : S)
+        (B : S)
+        (C : S)
+        (D : S)
+        (E : S)
+        (F : S)
+        (G : S)
+        (H : S)
+        (I : S) : sig
       type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t * I.t
 
       include S with type t := t
@@ -1829,13 +1854,14 @@ module Stable = struct
   (*$*)
 
   module Of_list_or_sequence_not_packed_rpc = struct
-    module V1 (T : sig
-      type 'a t
+    module V1
+        (T : sig
+           type 'a t
 
-      val to_sequence : 'a t -> 'a Sequence.t
-      val of_list : 'a list -> 'a t
-    end)
-    (X : S_rpc) =
+           val to_sequence : 'a t -> 'a Sequence.t
+           val of_list : 'a list -> 'a t
+         end)
+        (X : S_rpc) =
     struct
       type t = X.t T.t
 
@@ -1889,13 +1915,14 @@ module Stable = struct
   end
 
   module Of_list_or_sequence_not_packed = struct
-    module V1 (T : sig
-      type 'a t
+    module V1
+        (T : sig
+           type 'a t
 
-      val to_sequence : 'a t -> 'a Sequence.t
-      val of_list : 'a list -> 'a t
-    end)
-    (X : S) =
+           val to_sequence : 'a t -> 'a Sequence.t
+           val of_list : 'a list -> 'a t
+         end)
+        (X : S) =
     struct
       module Plain = Of_list_or_sequence_not_packed_rpc.V1 (T) (X)
 
@@ -1958,11 +1985,11 @@ module Stable = struct
     (* Same as V2, but mashes together [Elt_start] and first [Elt_part] for compactness.
        (Particularly noticeable when list elements are atomic, a common case.) *)
     module V3_not_packed = Of_list_or_sequence_not_packed_rpc.V1 (struct
-      type 'a t = 'a list
+        type 'a t = 'a list
 
-      let to_sequence = Sequence.of_list
-      let of_list x = x
-    end)
+        let to_sequence = Sequence.of_list
+        let of_list x = x
+      end)
 
     module V3 (X : S_rpc) = Packed_rpc.V1 (V3_not_packed (X))
   end
@@ -1987,11 +2014,11 @@ module Stable = struct
     (* Same as V2, but mashes together [Elt_start] and first [Elt_part] for compactness.
        (Particularly noticeable when list elements are atomic, a common case.) *)
     module V3_not_packed = Of_list_or_sequence_not_packed.V1 (struct
-      type 'a t = 'a list
+        type 'a t = 'a list
 
-      let to_sequence = Sequence.of_list
-      let of_list x = x
-    end)
+        let to_sequence = Sequence.of_list
+        let of_list x = x
+      end)
 
     module V3 (X : S) = Packed.V1 (V3_not_packed (X))
   end
@@ -2363,30 +2390,32 @@ module Stable = struct
 
   module Of_sequence_rpc = struct
     module V1_not_packed = Of_list_or_sequence_not_packed_rpc.V1 (struct
-      type 'a t = 'a Sequence.t
+        type 'a t = 'a Sequence.t
 
-      let to_sequence x = x
-      let of_list = Sequence.of_list
-    end)
+        let to_sequence x = x
+        let of_list = Sequence.of_list
+      end)
 
     module V1 (X : S_rpc) = Packed_rpc.V1 (V1_not_packed (X))
   end
 
   module Of_sequence = struct
     module V1_not_packed = Of_list_or_sequence_not_packed.V1 (struct
-      type 'a t = 'a Sequence.t
+        type 'a t = 'a Sequence.t
 
-      let to_sequence x = x
-      let of_list = Sequence.of_list
-    end)
+        let to_sequence x = x
+        let of_list = Sequence.of_list
+      end)
 
     module V1 (X : S) = Packed.V1 (V1_not_packed (X))
   end
 
   module Fixpoint_rpc = struct
-    module V1 (T : sig
-      type t
-    end) (F : functor (_ : S_rpc with type t = T.t) -> S_rpc with type t = T.t) :
+    module V1
+        (T : sig
+           type t
+         end)
+        (F : functor (_ : S_rpc with type t = T.t) -> S_rpc with type t = T.t) :
       S_rpc with type t = T.t = struct
       type t = T.t
 
@@ -2431,9 +2460,11 @@ module Stable = struct
   end
 
   module Fixpoint = struct
-    module V1 (T : sig
-      type t
-    end) (F : functor (_ : S with type t = T.t) -> S with type t = T.t) :
+    module V1
+        (T : sig
+           type t
+         end)
+        (F : functor (_ : S with type t = T.t) -> S with type t = T.t) :
       S with type t = T.t = struct
       type t = T.t
 

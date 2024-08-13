@@ -151,7 +151,7 @@ let type_declaration_match
              ~to_streamable_fun:(to_streamable_fun ~loc ~payload)
              ~of_streamable_fun:(of_streamable_fun ~loc ~payload))
      }
-      : Clause.Match.t)
+     : Clause.Match.t)
 ;;
 
 let polymorphic_primitive_or_module_match
@@ -180,7 +180,7 @@ let polymorphic_primitive_or_module_match
            ~functor_name:[%string "Of_%{String.lowercase first_module_name}"]
            ~arguments:children)
    }
-    : Clause.Match.t)
+   : Clause.Match.t)
 ;;
 
 let module_name_for_type_parameter = function

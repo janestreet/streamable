@@ -44,5 +44,5 @@ let maybe_match type_ (_ : Ctx.t) =
                     (Longident.parse [%string "Core.%{String.capitalize primitive}"]))
              ])
    }
-    : Clause.Match.t)
+   : Clause.Match.t)
 ;;

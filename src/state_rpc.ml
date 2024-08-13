@@ -260,18 +260,16 @@ module Make (X : S) = struct
         let%bind state_pipe, update_pipes = f c q in
         return
         @@ Pipe.create_reader ~close_on_exception:true (fun w ->
-             let open Deferred.Let_syntax in
-             upon (Pipe.closed w) (fun () ->
-               (match Pipe.read_now' update_pipes with
-                | `Eof | `Nothing_available -> ()
-                | `Ok queue ->
-                  Queue.iter queue ~f:(fun update_pipe -> Pipe.close_read update_pipe));
-               Pipe.close_read update_pipes);
-             let%bind () =
-               write_msg w state_pipe ~constructor:(fun x -> Response.State x)
-             in
-             Pipe.iter update_pipes ~f:(fun update_pipe ->
-               write_msg w update_pipe ~constructor:(fun x -> Update x))))
+          let open Deferred.Let_syntax in
+          upon (Pipe.closed w) (fun () ->
+            (match Pipe.read_now' update_pipes with
+             | `Eof | `Nothing_available -> ()
+             | `Ok queue ->
+               Queue.iter queue ~f:(fun update_pipe -> Pipe.close_read update_pipe));
+            Pipe.close_read update_pipes);
+          let%bind () = write_msg w state_pipe ~constructor:(fun x -> Response.State x) in
+          Pipe.iter update_pipes ~f:(fun update_pipe ->
+            write_msg w update_pipe ~constructor:(fun x -> Update x))))
     ;;
 
     let implement ?on_exception f =

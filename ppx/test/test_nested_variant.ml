@@ -15,29 +15,33 @@ let test ?(show_mapping = false) n =
 ;;
 
 let%expect_test "nested-variant-create" =
-  require_does_raise [%here] ~hide_positions:true (fun () -> test 0 ~show_mapping:true);
+  require_does_raise ~hide_positions:true (fun () -> test 0 ~show_mapping:true);
   [%expect
     {|
     (ppx/ppx_streamable/src/nested_variant.ml:LINE:COL
      "Error: [nested_variant] of empty constructor list")
     |}];
   test 1 ~show_mapping:true;
-  [%expect {|
+  [%expect
+    {|
     (repr 0)
     (mappings (("" 0)))
     |}];
   test 2 ~show_mapping:true;
-  [%expect {|
+  [%expect
+    {|
     (repr (0 1))
     (mappings ((A 0) (B 1)))
     |}];
   test 3 ~show_mapping:true;
-  [%expect {|
+  [%expect
+    {|
     (repr (0 1 2))
     (mappings ((A 0) (B 1) (C 2)))
     |}];
   test 4 ~show_mapping:true;
-  [%expect {|
+  [%expect
+    {|
     (repr (0 1 2 3))
     (mappings ((A 0) (B 1) (C 2) (D 3)))
     |}];

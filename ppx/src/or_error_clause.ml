@@ -31,5 +31,5 @@ let maybe_match type_ { Ctx.version; _ } =
        (fun ctx children ->
          Helpers.apply_streamable_dot ctx ~functor_name:"Of_result" ~arguments:children)
    }
-    : Clause.Match.t)
+   : Clause.Match.t)
 ;;

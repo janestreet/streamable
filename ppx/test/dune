@@ -1,5 +1,6 @@
 (library
  (name ppx_streamable_test)
- (libraries core expect_test_helpers_core ppx_streamable streamable)
+ (libraries core expect_test_helpers_core core_kernel.nonempty_list
+   ppx_streamable streamable core_kernel.total_map)
  (preprocess
   (pps ppx_jane ppx_streamable -pretty)))

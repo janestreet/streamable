@@ -55,7 +55,7 @@ module type Pipe_rpc = sig
       -> ('conn_state
           -> X.query
           -> X.Response.Intermediate.Part.t Pipe.Reader.t Pipe.Reader.t
-             Deferred.Or_error.t)
+               Deferred.Or_error.t)
       -> 'conn_state Rpc.Implementation.t
   end
 end
