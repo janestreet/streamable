@@ -2,8 +2,8 @@ open! Base
 open! Import
 
 let tuple_core_types ~core_type =
-  match core_type.ptyp_desc with
-  | Ptyp_tuple core_types -> Some core_types
+  match Ppxlib_jane.Shim.Core_type_desc.of_parsetree core_type.ptyp_desc with
+  | Ptyp_tuple labeled_core_types -> Ppxlib_jane.as_unlabeled_tuple labeled_core_types
   | _ -> None
 ;;
 

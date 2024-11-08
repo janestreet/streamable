@@ -6,7 +6,7 @@ let type_parameter ~core_type =
   | Ptyp_constr (longident_loc, [ type_parameter ]) ->
     (match
        Helpers.longident_is_like_t
-         longident_loc.txt
+         longident_loc
          ~primitive_name:None
          ~first_module_name:"Or_error"
      with

@@ -32,15 +32,45 @@ let apply_streamable_dot ({ loc; rpc; version } : Ctx.t) ~functor_name ~argument
     pmod_apply ~loc accum argument)
 ;;
 
-let split_longident longident =
-  match List.rev (Longident.flatten_exn longident) with
-  | [] -> invalid_arg "Ppxlib.Longident.flatten"
-  | [ last ] -> `prefix None, `last last
-  | last :: reversed_prefix ->
-    let prefix =
-      reversed_prefix |> List.rev |> String.concat ~sep:"." |> Longident.parse
-    in
-    `prefix (Some prefix), `last last
+(* We don't want to introduce a dependency on Nonempty_list and therefore Core, so instead
+   here's a ~copy of a small fragment of that library *)
+module Nonempty_list = struct
+  type 'a t = Cons of 'a * 'a list
+
+  let to_list (Cons (hd, tl)) = hd :: tl
+  let singleton hd = Cons (hd, [])
+  let cons hd tl : _ t = Cons (hd, to_list tl)
+  let rev_append xs ys = List.fold xs ~init:ys ~f:(fun acc x -> cons x acc)
+  let reverse (Cons (hd, tl)) = rev_append tl (singleton hd)
+end
+
+(* [longident_flatten] returns [None] if it finds any [Lapply] *)
+let longident_flatten longident =
+  let rec loop (acc : _ Nonempty_list.t) : Longident.t -> _ = function
+    | Lident s -> Some (Nonempty_list.cons s acc)
+    | Ldot (lid, s) -> loop (Nonempty_list.cons s acc) lid
+    | Lapply (_, _) -> None
+  in
+  match (longident : Longident.t) with
+  | Lident s -> Some (Nonempty_list.singleton s)
+  | Ldot (lid, s) -> loop (Nonempty_list.singleton s) lid
+  | Lapply (_, _) -> None
+;;
+
+let split_longident (longident : longident loc) =
+  match longident_flatten longident.txt with
+  | None ->
+    unsupported_use
+      ~loc:longident.loc
+      ~why:"type expressions containing functor applications are not supported"
+  | Some flattened ->
+    (match Nonempty_list.reverse flattened with
+     | Cons (last, []) -> `prefix None, `last last
+     | Cons (last, reversed_prefix) ->
+       let prefix =
+         reversed_prefix |> List.rev |> String.concat ~sep:"." |> Longident.parse
+       in
+       `prefix (Some prefix), `last last)
 ;;
 
 let if_module_dot_t_then_module' longident =
@@ -52,18 +82,18 @@ let if_module_dot_t_then_module' longident =
 let if_module_dot_t_then_module core_type =
   match core_type.ptyp_desc with
   | Ptyp_constr (longident_loc, _) ->
-    (match if_module_dot_t_then_module' longident_loc.txt with
+    (match if_module_dot_t_then_module' longident_loc with
      | None -> None
      | Some longident -> Some { longident_loc with txt = longident })
   | _ -> None
 ;;
 
-let longident_is_like_t longident ~primitive_name ~first_module_name =
+let longident_is_like_t (longident : longident loc) ~primitive_name ~first_module_name =
   let is_like_primitive () =
     match primitive_name with
     | None -> false
     | Some primitive_name ->
-      (match longident with
+      (match longident.txt with
        | Lident lident -> String.(primitive_name = lident)
        | _ -> false)
   in
@@ -71,8 +101,8 @@ let longident_is_like_t longident ~primitive_name ~first_module_name =
     match if_module_dot_t_then_module' longident with
     | None -> false
     | Some longident ->
-      (match Longident.flatten_exn longident with
-       | first :: _ -> String.(first_module_name = first)
+      (match longident_flatten longident with
+       | Some (Cons (first, _)) -> String.(first_module_name = first)
        | _ -> false)
   in
   is_like_primitive () || is_like_module ()
@@ -165,7 +195,7 @@ let polymorphic_primitive_or_module_match
   let%map type_parameters =
     match core_type.ptyp_desc with
     | Ptyp_constr (longident_loc, type_parameters) ->
-      (match longident_is_like_t longident_loc.txt ~primitive_name ~first_module_name with
+      (match longident_is_like_t longident_loc ~primitive_name ~first_module_name with
        | false -> None
        | true ->
          assert (List.length type_parameters = num_type_parameters);

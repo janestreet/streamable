@@ -8,7 +8,7 @@ let maybe_match type_ (_ : Ctx.t) =
     | Ptyp_constr (longident_loc, []) ->
       (match
          Helpers.longident_is_like_t
-           longident_loc.txt
+           longident_loc
            ~primitive_name:None
            ~first_module_name:"Sexp"
        with

@@ -22,9 +22,11 @@ module Signature = struct
         ~f:(fun index (type_parameter, (variance, injectivity)) ->
           let module_name =
             Helpers.module_name_for_type_parameter
-              (match type_parameter.ptyp_desc with
-               | Ptyp_var name -> `Ptyp_var name
-               | Ptyp_any -> `Ptyp_any index
+              (match
+                 Ppxlib_jane.Shim.Core_type_desc.of_parsetree type_parameter.ptyp_desc
+               with
+               | Ptyp_var (name, _) -> `Ptyp_var name
+               | Ptyp_any _ -> `Ptyp_any index
                | _ ->
                  raise_s
                    [%message
@@ -60,15 +62,14 @@ module Signature = struct
              streamable_module_type
              [ Pwith_type
                  ( Loc.make ~loc (Longident.Lident "t")
-                 , { ptype_name = Loc.make ~loc "t"
-                   ; ptype_params = []
-                   ; ptype_cstrs = []
-                   ; ptype_kind = Ptype_abstract
-                   ; ptype_private = Public
-                   ; ptype_manifest = Some (core_type_of_type_declaration type_dec)
-                   ; ptype_attributes = []
-                   ; ptype_loc = loc
-                   } )
+                 , Ast_builder.Default.type_declaration
+                     ~name:(Loc.make ~loc "t")
+                     ~params:[]
+                     ~cstrs:[]
+                     ~kind:Ptype_abstract
+                     ~private_:Public
+                     ~manifest:(Some (core_type_of_type_declaration type_dec))
+                     ~loc )
              ])
         ~f:(fun (_, module_name) functor_ ->
           pmty_functor
@@ -207,11 +208,18 @@ module Structure = struct
       | true ->
         (match attribute.attr_payload with
          (* e.g. [@@deriving foo, bar] *)
-         | PStr [ { pstr_desc = Pstr_eval ({ pexp_desc = Pexp_tuple exprs; _ }, _); _ } ]
-           -> List.filter_map exprs ~f:extract_deriver_name_from_expr
-         (* e.g. [@@deriving foo] *)
-         | PStr [ { pstr_desc = Pstr_eval (expr, _); _ } ] ->
-           Option.to_list (extract_deriver_name_from_expr expr)
+         | PStr
+             [ { pstr_desc = Pstr_eval (({ pexp_desc; pexp_loc = loc; _ } as expr), _)
+               ; _
+               }
+             ] ->
+           (match Ppxlib_jane.Shim.Expression_desc.of_parsetree ~loc pexp_desc with
+            | Pexp_tuple labeled_exprs ->
+              (match Ppxlib_jane.as_unlabeled_tuple labeled_exprs with
+               | Some exprs -> List.filter_map exprs ~f:extract_deriver_name_from_expr
+               | None -> [])
+              (* e.g. [@@deriving foo] *)
+            | _ -> Option.to_list (extract_deriver_name_from_expr expr))
          | _ -> []))
   ;;
 
@@ -296,9 +304,11 @@ module Structure = struct
     let type_parameter_module_names =
       List.mapi type_dec.ptype_params ~f:(fun index (type_parameter, _) ->
         Helpers.module_name_for_type_parameter
-          (match type_parameter.ptyp_desc with
-           | Ptyp_var name -> `Ptyp_var name
-           | Ptyp_any -> `Ptyp_any index
+          (match
+             Ppxlib_jane.Shim.Core_type_desc.of_parsetree type_parameter.ptyp_desc
+           with
+           | Ptyp_var (name, _) -> `Ptyp_var name
+           | Ptyp_any _ -> `Ptyp_any index
            | _ ->
              raise_s
                [%message
