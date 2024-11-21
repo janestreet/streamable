@@ -33,7 +33,9 @@ val apply_streamable_dot
 (** Returns [(`prefix (Some %{prefix}), `last %{last})] iff the [longident] matches the
     pattern %{prefix}.{last}, where %{pattern} may consist of one or more modules and
     %{last} is a trailing type, else returns [(`prefix None, `last %{last})]. *)
-val split_longident : longident -> [ `prefix of longident option ] * [ `last of label ]
+val split_longident
+  :  longident loc
+  -> [ `prefix of longident option ] * [ `last of label ]
 
 (** Returns %{module_name} if [core_type] is of the form %{module_name}.t. *)
 val if_module_dot_t_then_module : core_type -> longident loc option
@@ -41,7 +43,7 @@ val if_module_dot_t_then_module : core_type -> longident loc option
 (** Determines whether the [longident] is either like %{primitive_name} (if specified), or
     %{first_module_name}.*.t. *)
 val longident_is_like_t
-  :  longident
+  :  longident loc
   -> primitive_name:label option
   -> first_module_name:label
   -> bool

@@ -8,7 +8,7 @@ let maybe_match type_ (_ : Ctx.t) =
     match core_type.ptyp_desc with
     | Ptyp_constr (_, []) -> None
     | Ptyp_constr (longident_loc, type_parameters) ->
-      (match Helpers.split_longident longident_loc.txt, module_name with
+      (match Helpers.split_longident longident_loc, module_name with
        | (`prefix (Some module_name'), `last "t"), Some module_name
          when [%compare.equal: Longident.t] module_name.txt module_name' ->
          Some type_parameters
