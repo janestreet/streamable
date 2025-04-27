@@ -224,12 +224,12 @@ Line _, characters _-_:
 Error: Unknown ppx_streamable version: 2. The supported versions are: {1}
 |}]
 
-module Set_dot_m = struct
-  type t = Set.M(Int).t [@@deriving streamable ~version:1]
+module Stable_set_dot_m = struct
+  type t = Set.Stable.V1.M(Int).t [@@deriving streamable ~version:1]
 end
 
 [%%expect
   {|
 Line _, characters _-_:
-Error: ppx_streamable: type expressions containing functor applications are not supported.
+Error: Handling of type `Set.Stable.V1.M(Int).t' is unknown.
 |}]

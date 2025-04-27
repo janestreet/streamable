@@ -3,8 +3,7 @@ open! Import
 
 (*_ see [../doc/streamable.mkd] for a high level introdution to this signature *)
 
-(** Functors for serializing and deserializing potentially large values
-    incrementally.
+(** Functors for serializing and deserializing potentially large values incrementally.
 
     Serializing large values can cause problems
 
@@ -15,8 +14,7 @@ open! Import
 
     Instead, we want to serialize large values incrementally, which necessitates breaking
     them into reasonably sized parts that can individually serialized and then
-    re-assembled after deserialization.
-*)
+    re-assembled after deserialization. *)
 
 (** see comment in [Module_type] where [S] is defined *)
 module type S = Module_type.S
@@ -333,7 +331,7 @@ module type Fixpoint_rpc = functor
     -> S_rpc with type t = T.t
 
 (** [Checked] is a wrapper functor for finding places that are producing binio values that
-    are too large.  The output behaves exactly like the input, except that [to_parts] will
+    are too large. The output behaves exactly like the input, except that [to_parts] will
     raise if it ever produces an intermediate part whose binio size exceeds
     [max_intermediate_part_bin_size]. *)
 module type Checked = functor
@@ -399,7 +397,7 @@ module type Main = sig
   module type Packed = Packed
   module type Packed_rpc = Packed_rpc
 
-  (** The latest versions of each functor.  These functors are unstable *)
+  (** The latest versions of each functor. These functors are unstable *)
 
   module Of_atomic : Of_atomic
   module Of_atomic_rpc : Of_atomic_rpc
@@ -692,14 +690,13 @@ module type Main = sig
       module V1 : Of_sexpable
     end
 
-    (** Toplevel versions of the [Streamable] library, used by [@@deriving streamable
-        ~version].
+    (** Toplevel versions of the [Streamable] library, used by
+        [@@deriving streamable ~version].
 
         These are meant to be "add only" -- new functor types can be added but not
-        removed, and version cannot change after it's added.  If we ever want add a new
+        removed, and version cannot change after it's added. If we ever want add a new
         version of one of the functors bundled in a [Streamable.Stable.Vn] module, we'll
-        add [Streamable.Stable.V(n+1)] and add it there.
-    *)
+        add [Streamable.Stable.V(n+1)] and add it there. *)
 
     module V1 : sig
       module Fixpoint = Fixpoint.V1

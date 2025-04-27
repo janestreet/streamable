@@ -47,12 +47,12 @@ let dispatch' rpc conn query =
 
 let dispatch rpc conn query = dispatch' rpc conn query |> Deferred.map ~f:Or_error.join
 
-let implement ?on_exception rpc f =
+let implement ?on_exception ?leave_open_on_exception rpc f =
   let f conn query =
     let%bind response = f conn query in
     return ((), response)
   in
-  State_rpc.implement ?on_exception rpc f
+  State_rpc.implement ?on_exception ?leave_open_on_exception rpc f
 ;;
 
 let bin_query_shape = State_rpc.bin_query_shape

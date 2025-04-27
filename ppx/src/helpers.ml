@@ -58,23 +58,18 @@ let longident_flatten longident =
 ;;
 
 let split_longident (longident : longident loc) =
-  match longident_flatten longident.txt with
-  | None ->
-    unsupported_use
-      ~loc:longident.loc
-      ~why:"type expressions containing functor applications are not supported"
-  | Some flattened ->
-    (match Nonempty_list.reverse flattened with
-     | Cons (last, []) -> `prefix None, `last last
-     | Cons (last, reversed_prefix) ->
-       let prefix =
-         reversed_prefix |> List.rev |> String.concat ~sep:"." |> Longident.parse
-       in
-       `prefix (Some prefix), `last last)
+  let%map flattened = longident_flatten longident.txt in
+  match Nonempty_list.reverse flattened with
+  | Cons (last, []) -> `prefix None, `last last
+  | Cons (last, reversed_prefix) ->
+    let prefix =
+      reversed_prefix |> List.rev |> String.concat ~sep:"." |> Longident.parse
+    in
+    `prefix (Some prefix), `last last
 ;;
 
 let if_module_dot_t_then_module' longident =
-  match split_longident longident with
+  match%bind split_longident longident with
   | `prefix (Some module_), `last last when String.(last = "t") -> Some module_
   | _ -> None
 ;;
@@ -85,6 +80,13 @@ let if_module_dot_t_then_module core_type =
     (match if_module_dot_t_then_module' longident_loc with
      | None -> None
      | Some longident -> Some { longident_loc with txt = longident })
+  | _ -> None
+;;
+
+let if_module_dot_m_then_arg longident ~module_name =
+  match (longident : longident) with
+  | Ldot (Lapply (Ldot (Lident lid, "M"), arg), "t") when String.(module_name = lid) ->
+    Some arg
   | _ -> None
 ;;
 

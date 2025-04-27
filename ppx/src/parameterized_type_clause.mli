@@ -1,8 +1,10 @@
 (** [Parameterized_type_clause] matches types of the form:
 
-    {[ (a1, ..., an) %{module_path}.t ]}
+    {[
+      (a1, ..., an) %{module_path}.t
+    ]}
 
-    where %{module_path} contains one or more (capitalized) module names separated by
+    where %[{module_path}] contains one or more (capitalized) module names separated by
     dots.
 
     It generates a module of the form:
@@ -12,6 +14,5 @@
          (<expansion of a1>)
          (...)
          (<expansion of an>)
-    ]}
-*)
+    ]} *)
 val maybe_match : Clause.t

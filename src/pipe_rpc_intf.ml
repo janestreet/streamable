@@ -1,5 +1,5 @@
-(** A Streamable.Pipe_rpc is just like a Pipe_rpc except the updates are
-    streamed out gradually rather than sent in one big [bin_io] blob. *)
+(** A Streamable.Pipe_rpc is just like a Pipe_rpc except the updates are streamed out
+    gradually rather than sent in one big [bin_io] blob. *)
 
 open! Core
 open! Async_kernel
@@ -38,6 +38,7 @@ module type Pipe_rpc = sig
 
   val implement
     :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+    -> ?leave_open_on_exception:bool (** default: See [Async_rpc.Pipe_rpc.implement] *)
     -> ('q, 'r) t
     -> ('conn_state -> 'q -> 'r Pipe.Reader.t Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t
@@ -48,8 +49,8 @@ module type Pipe_rpc = sig
   module Make (X : S) : sig
     val rpc : (X.query, X.response) t
 
-    (** [implement'] is like [implement rpc] except that it allows the server
-        to control the conversion from [response]s to parts. *)
+    (** [implement'] is like [implement rpc] except that it allows the server to control
+        the conversion from [response]s to parts. *)
     val implement'
       :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
       -> ('conn_state

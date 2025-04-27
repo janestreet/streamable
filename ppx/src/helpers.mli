@@ -10,8 +10,8 @@ val pat_var : loc:location -> label -> pattern
 (** expression variable *)
 val exp_var : loc:location -> label -> expression
 
-(** Gets the single [type t] declaration, and checks that it is valid.
-    If it is not valid, it raises [unsupported_use]. *)
+(** Gets the single [type t] declaration, and checks that it is valid. If it is not valid,
+    it raises [unsupported_use]. *)
 val get_the_one_and_only_type_t
   :  type_declaration list
   -> loc:location
@@ -19,11 +19,10 @@ val get_the_one_and_only_type_t
 
 (** Generates a [module_expr] of the form:
     {[
-      Streamable.Stable.V%{version}.%{functor_name} %{arguments}
+      Streamable.Stable.V % { version }.%{functor_name} % { arguments }
     ]}
 
-    If [rpc] is true, then [_rpc] is appended to [functor_name].
-*)
+    If [rpc] is true, then [_rpc] is appended to [functor_name]. *)
 val apply_streamable_dot
   :  Ctx.t
   -> functor_name:label
@@ -31,17 +30,22 @@ val apply_streamable_dot
   -> module_expr
 
 (** Returns [(`prefix (Some %{prefix}), `last %{last})] iff the [longident] matches the
-    pattern %{prefix}.{last}, where %{pattern} may consist of one or more modules and
-    %{last} is a trailing type, else returns [(`prefix None, `last %{last})]. *)
+    pattern %[{prefix}].[{last}], where %[{pattern}] may consist of one or more modules
+    and %[{last}] is a trailing type, else returns [(`prefix None, `last %{last})].
+
+    Returns [None] iff the [longident] contains a functor application. *)
 val split_longident
   :  longident loc
-  -> [ `prefix of longident option ] * [ `last of label ]
+  -> ([ `prefix of longident option ] * [ `last of label ]) option
 
-(** Returns %{module_name} if [core_type] is of the form %{module_name}.t. *)
+(** Returns %[{module_name}] if [core_type] is of the form %[{module_name}].t. *)
 val if_module_dot_t_then_module : core_type -> longident loc option
 
-(** Determines whether the [longident] is either like %{primitive_name} (if specified), or
-    %{first_module_name}.*.t. *)
+(** Returns %[{arg}] if [longident_loc] is of the form %[{module_name}].M([{arg}]). *)
+val if_module_dot_m_then_arg : longident -> module_name:label -> longident option
+
+(** Determines whether the [longident] is either like %[{primitive_name}] (if specified),
+    or %[{first_module_name}].*.t. *)
 val longident_is_like_t
   :  longident loc
   -> primitive_name:label option
@@ -62,10 +66,10 @@ val streamable_of_streamable
   -> of_streamable_fun:expression
   -> module_expr
 
-(** Used in generic patterns.  0 -> a, 1 -> b, ..., 27 -> a1, ...  *)
+(** Used in generic patterns. 0 -> a, 1 -> b, ..., 27 -> a1, ... *)
 val lowercase_name_of_num : int -> label
 
-(** Used in generic patterns.  0 -> A, 1 -> B, ..., 27 -> A1, ...  *)
+(** Used in generic patterns. 0 -> A, 1 -> B, ..., 27 -> A1, ... *)
 val uppercase_name_of_num : int -> label
 
 (** Code common to handling record/variant clauses. *)
@@ -80,8 +84,12 @@ val type_declaration_match
 
 (** Handles clauses of the form:
 
-    {[ (a1, ..., an) %{primitive_name} ]}
-    {[ (a1, ..., an) %{first_module_name}.t ]}
+    {[
+      (a1, ..., an) %{primitive_name}
+    ]}
+    {[
+      (a1, ..., an) %{first_module_name}.t
+    ]}
 
     in order to generate:
 
@@ -90,8 +98,7 @@ val type_declaration_match
           (<expansion of a1>)
           (...)
           (<expansion of an>)
-    v}
-*)
+    v} *)
 val polymorphic_primitive_or_module_match
   :  num_type_parameters:int
   -> primitive_name:string option

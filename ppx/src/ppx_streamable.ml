@@ -74,7 +74,8 @@ module Signature = struct
         ~f:(fun (_, module_name) functor_ ->
           pmty_functor
             ~loc
-            (Named (Loc.make ~loc (Some module_name), streamable_module_type))
+            (Named (Loc.make ~loc (Some module_name), streamable_module_type, [])
+             |> Ppxlib_jane.Shim.Functor_parameter.to_parsetree)
             functor_)
     in
     psig_module
@@ -349,7 +350,8 @@ module Structure = struct
         ~f:(fun module_name functor_ ->
           pmod_functor
             ~loc
-            (Named (Loc.make ~loc (Some module_name), streamable_module_type))
+            (Named (Loc.make ~loc (Some module_name), streamable_module_type, [])
+             |> Ppxlib_jane.Shim.Functor_parameter.to_parsetree)
             functor_)
     in
     pstr_module
