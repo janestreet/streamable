@@ -9,10 +9,10 @@ let maybe_match type_ (_ : Ctx.t) =
     | Ptyp_constr (_, []) -> None
     | Ptyp_constr (longident_loc, type_parameters) ->
       (match Helpers.split_longident longident_loc, module_name with
-       | (`prefix (Some module_name'), `last "t"), Some module_name
+       | Some (`prefix (Some module_name'), `last "t"), Some module_name
          when [%compare.equal: Longident.t] module_name.txt module_name' ->
          Some type_parameters
-       | (`prefix None, `last "t"), None -> Some type_parameters
+       | Some (`prefix None, `last "t"), None -> Some type_parameters
        | _ -> None)
     | _ -> None
   in

@@ -76,8 +76,8 @@ module type Versioned_pipe_rpc = sig
         end) : sig
         val rpc : (Version.query, Version.response) Pipe_rpc.t
 
-        (** [implement'] is like [Pipe_rpc.implement rpc] except that it allows the
-            server to control the conversion from the [response] to parts. *)
+        (** [implement'] is like [Pipe_rpc.implement rpc] except that it allows the server
+            to control the conversion from the [response] to parts. *)
         val implement'
           :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
           -> ('conn_state
@@ -114,8 +114,8 @@ module type Versioned_pipe_rpc = sig
         end) : sig
         val rpc : (Version.query, Version.response) Pipe_rpc.t
 
-        (** [implement'] is like [Pipe_rpc.implement rpc] except that it allows the
-            server to control the conversion from the [response] to parts. *)
+        (** [implement'] is like [Pipe_rpc.implement rpc] except that it allows the server
+            to control the conversion from the [response] to parts. *)
         val implement'
           :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
           -> ('conn_state
@@ -163,8 +163,8 @@ module type Versioned_pipe_rpc = sig
         end) : sig
         val rpc : (Version.query, Version.response) Pipe_rpc.t
 
-        (** [implement'] is like [Pipe.implement rpc] except that it allows the
-            server to control the conversion from the [response] to parts. *)
+        (** [implement'] is like [Pipe.implement rpc] except that it allows the server to
+            control the conversion from the [response] to parts. *)
         val implement'
           :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
           -> ('conn_state

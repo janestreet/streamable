@@ -7,8 +7,7 @@ open! Import
     version number) rpc known to a particular callee.
 
     This data structure is used to store per-version dispatch functions for
-    caller_converts style versioning.
-*)
+    caller_converts style versioning. *)
 type 'a t
 
 val create : rpc_name:string -> _ t

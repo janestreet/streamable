@@ -1,4 +1,5 @@
-(** [Atomic_clause] matches types of the form:
+(** {v
+ [Atomic_clause] matches types of the form:
 
     {[ (%{module_path}.t [@streamable.atomic]) ]}
 
@@ -10,5 +11,5 @@
     {[
       Streamable.Of_atomic (%{module_path})
     ]}
-*)
+    v} *)
 val maybe_match : Clause.t

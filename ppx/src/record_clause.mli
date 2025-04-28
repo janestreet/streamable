@@ -25,6 +25,5 @@
 
     As a special case, if the record only contains one field, the [Streamable.Of_tupleN]
     call is ommitted and the record is directly converted to and from the singleton
-    field's type.
-*)
+    field's type. *)
 val maybe_match : Clause.t

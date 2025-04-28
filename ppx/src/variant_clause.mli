@@ -27,6 +27,5 @@
     from the singleton constructor's type.
 
     Further, if a constructor has no argument, then [Core.Unit] is used as the expansion
-    of that constructor.
-*)
+    of that constructor. *)
 val maybe_match : Clause.t

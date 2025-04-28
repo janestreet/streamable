@@ -43,15 +43,15 @@ module type Plain_rpc = sig
   module Direct_writer : sig
     type 'response_part t
 
-    (** Write a part of the response. Returns [`Closed] if [t] is closed.
-        Will raise if the response has already been finalised. *)
+    (** Write a part of the response. Returns [`Closed] if [t] is closed. Will raise if
+        the response has already been finalised. *)
     val write_response_without_pushback_exn
       :  'response_part t
       -> 'response_part
       -> [ `Ok | `Closed ]
 
-    (** Finalise the response, indicating there are no more parts.
-        Returns [`Closed] if [t] is closed.
+    (** Finalise the response, indicating there are no more parts. Returns [`Closed] if
+        [t] is closed.
 
         Will raise if the response has already been finalised. *)
     val finalise_response_without_pushback_exn : _ t -> [ `Ok | `Closed ]
@@ -64,8 +64,8 @@ module type Plain_rpc = sig
     val is_closed : _ t -> bool
 
     module Expert : sig
-      (** Response part bigstrings need to be created by this function instead of
-          directly written to the pipe. *)
+      (** Response part bigstrings need to be created by this function instead of directly
+          written to the pipe. *)
       val create_response_part
         :  bin_writer:'response_part Bin_prot.Type_class.writer
         -> 'response_part
@@ -85,8 +85,8 @@ module type Plain_rpc = sig
   module Make (X : S) : sig
     val rpc : (X.query, X.response) t
 
-    (** [implement'] is like [implement rpc] except that it allows the server
-        to control the conversion from the [response] to parts. *)
+    (** [implement'] is like [implement rpc] except that it allows the server to control
+        the conversion from the [response] to parts. *)
     val implement'
       :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
       -> ('conn_state
