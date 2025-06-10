@@ -290,23 +290,15 @@ module Make (X : S) = struct
     ;;
 
     let read_state r =
-      read_msg
-        (module State)
-        r
-        ~noun:"state"
-        ~match_:(function
-          | Response.State x -> Ok x
-          | Update _ -> Or_error.errorf "Streamable.State_rpc: incomplete state message")
+      read_msg (module State) r ~noun:"state" ~match_:(function
+        | Response.State x -> Ok x
+        | Update _ -> Or_error.errorf "Streamable.State_rpc: incomplete state message")
     ;;
 
     let read_update r =
-      read_msg
-        (module Update)
-        r
-        ~noun:"update"
-        ~match_:(function
-          | Response.Update x -> Ok x
-          | State _ -> Or_error.errorf "Streamable.State_rpc: incomplete update message")
+      read_msg (module Update) r ~noun:"update" ~match_:(function
+        | Response.Update x -> Ok x
+        | State _ -> Or_error.errorf "Streamable.State_rpc: incomplete update message")
     ;;
 
     let dispatch' conn query =
