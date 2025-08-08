@@ -83,6 +83,24 @@ let dispatch' rpc conn query =
 
 let dispatch rpc conn query = dispatch' rpc conn query |> Deferred.map ~f:Or_error.join
 
+let dispatch_with_rpc_result_and_metadata rpc conn query ~metadata =
+  let%bind.Deferred.Result server_response =
+    State_rpc.Expert.dispatch_with_rpc_result_and_metadata rpc conn query ~metadata
+  in
+  Or_error.map server_response ~f:(fun (response, pipe) ->
+    Pipe.close_read pipe;
+    response)
+  |> Deferred.Result.return
+;;
+
+let dispatch_with_rpc_result =
+  dispatch_with_rpc_result_and_metadata ~metadata:Rpc_metadata.V2.empty
+;;
+
+module Expert = struct
+  let dispatch_with_rpc_result_and_metadata = dispatch_with_rpc_result_and_metadata
+end
+
 let implement ?on_exception rpc f =
   let leave_open_on_exception =
     (* Exceptions would need to come from the streamable part unfolding so it makes sense
@@ -92,5 +110,18 @@ let implement ?on_exception rpc f =
   State_rpc.implement ?on_exception rpc (plain_impl_to_state f) ~leave_open_on_exception
 ;;
 
+let implement_with_auth ?on_exception rpc f =
+  State_rpc.implement_with_auth
+    ?on_exception
+    rpc
+    (fun conn query ->
+      let%map.Async_rpc_kernel.Or_not_authorized.Deferred response = f conn query in
+      let empty = Pipe.create_reader ~close_on_exception:false (fun _ -> Deferred.unit) in
+      response, empty)
+    ~leave_open_on_exception:false
+;;
+
 let bin_query_shape = State_rpc.bin_query_shape
 let bin_response_shape = State_rpc.bin_state_shape
+let version = State_rpc.version
+let name = State_rpc.name

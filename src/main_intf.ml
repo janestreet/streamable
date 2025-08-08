@@ -23,8 +23,8 @@ module type S_rpc = Module_type.S_rpc
 module type S_rpc_with_sexp_of_part = Module_type.S_rpc_with_sexp_of_part
 
 (** [Stable_without_of_sexp] is used for keys in [S_rpc]-returning functors *)
-module type Stable_without_of_sexp = sig
-  type t [@@deriving bin_io, compare, sexp_of]
+module type%template [@mode m = (global, local)] Stable_without_of_sexp = sig
+  type t [@@deriving bin_io, (compare [@mode m]), sexp_of]
 
   include Comparator.Stable.V1.S with type t := t
 end
