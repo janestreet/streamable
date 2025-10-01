@@ -226,6 +226,13 @@ end
 module _ : Streamable.S with type t = T_with_atomic_field.t = T_with_atomic_field
 ```
 
+### `[@streamable.map_with_atomic_values]`
+
+By default, `Map` types are streamed using the `Of_map` functor, which recursively streams
+both keys and values. However, when you know that the values are small enough to be
+serialized atomically, you can use the `[@streamable.map_with_atomic_values]` attribute to
+use the `Of_map_with_atomic_values` functor instead which can be more performant.
+
 Migrating from Hand-Written Functors to `ppx_streamable`
 ----------------------------------------------------------------------
 
@@ -274,17 +281,17 @@ corresponding `Streamable.Of_*` functor call:
 | `'a Fqueue.t`                            | `Streamable.Of_fqueue`                                         |
 | `'a B.Table.t` or `('b, 'a) Hashtbl.t`   | `Streamable.Of_hashtbl`                                        |
 | `'a list` or `'a List.t`                 | `Streamable.Of_list`                                           |
-| `'a B.Map.t` or `('b, 'a, 'c) Map.t`     | `Streamable.Of_map`                                            |
+| `'a B.Map.t` or `('b, 'a, 'c) Map.t`     | `Streamable.Of_map`<sup>[1](#footnote1)</sup>                  |
 | `'a Nonempty_list.t`                     | `Streamable.Of_nonempty_list`                                  |
 | `'a option` or `'a Option.t`             | `Streamable.Of_option`                                         |
 | `'a Or_error.t`                          | `Streamable.Of_result` (with `Core.Error.Stable.Vn.t` as the error type) |
 | `'a <primitive>`                         | `Streamable.Of_atomic (<Primitive>)`                           |
-| `<record>`                               | `Streamable.Of_streamable (Streamable.Of_tupleN (...))`<sup>[1](#footnote1)</sup>  |
+| `<record>`                               | `Streamable.Of_streamable (Streamable.Of_tupleN (...))`<sup>[2](#footnote2)</sup>  |
 | `('a, 'b) result` or `('a, 'b) Result.t` | `Streamable.Of_result`                                         |
 | `a Sequence.t`                           | `Streamable.Of_sequence`                                       |
 | `A.Set.t`                                | `Streamable.Of_set`                                            |
 | `(a1 * ... * an)`                        | `Streamable.Of_tupleN`                                         |
-| `<variant>`                              | `Streamable.Of_streamable (Streamable.Of_variantN (...))`<sup>[2](#footnote2)</sup> |
+| `<variant>`                              | `Streamable.Of_streamable (Streamable.Of_variantN (...))`<sup>[3](#footnote3)</sup> |
 
 There are values of N past which `Streamable.Of_tuple{N}` and
 `Streamable.Of_variant{N}` do not exist.  In those situations, we nest
@@ -293,11 +300,14 @@ tuples/variants so that we are not limited to small tuples/variants.
 
 Footnotes
 -----------
-<a name="footnote1">1</a>: If the record only contains one field then
+<a name="footnote1">1</a>: If the `[@streamable.map_with_atomic_values]` attribute is
+specified, then `Streamable.Of_map_with_atomic_values` will be used instead.
+
+<a name="footnote2">2</a>: If the record only contains one field then
 we omit the `Streamable.Of_tuple` part and directly convert to and
 from the singleton field's type using `Streamable.Of_streamable`.
 
-<a name="footnote2">2</a>: If the variant only contains one
+<a name="footnote3">3</a>: If the variant only contains one
 constructor then we omit the `Streamable.Of_variantN` part and
 directly convert to and from the singleton constructor's type using
 `Streamable.Of_streamable`.  Variants with zero constructors are also

@@ -144,7 +144,7 @@ Line _, characters _-_:
 Error: The arity of `Hashtbl.t' was expected to be 2 but was found to be 1
 |}]
 
-module Unused_attributes = struct
+module Unused_atomic_attribute = struct
   type t =
     { a : (int[@streamable.atomic])
     ; b : string list
@@ -156,6 +156,20 @@ end
   {|
 Line _, characters _-_:
 Error: Attribute `streamable.atomic' was not used
+|}]
+
+module Unused_map_with_atomic_values_attribute = struct
+  type t =
+    { a : (int option[@streamable.map_with_atomic_values])
+    ; b : string list
+    }
+  [@@deriving bin_io, sexp, streamable ~atomic ~version:1]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: Attribute `streamable.map_with_atomic_values' was not used
 |}]
 
 module Atomic_streamable_before_binio = struct
