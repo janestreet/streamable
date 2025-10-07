@@ -23,8 +23,8 @@ module type S_rpc = Module_type.S_rpc
 module type S_rpc_with_sexp_of_part = Module_type.S_rpc_with_sexp_of_part
 
 (** [Stable_without_of_sexp] is used for keys in [S_rpc]-returning functors *)
-module type Stable_without_of_sexp = sig
-  type t [@@deriving bin_io, compare, sexp_of]
+module type%template [@mode m = (global, local)] Stable_without_of_sexp = sig
+  type t [@@deriving bin_io, (compare [@mode m]), sexp_of]
 
   include Comparator.Stable.V1.S with type t := t
 end
@@ -46,6 +46,18 @@ module type Of_map = functor (Key : Stable) (Data : S) ->
 
 module type Of_map_rpc = functor (Key : Stable_without_of_sexp) (Data : S_rpc) ->
   S_rpc with type t = (Key.t, Data.t, Key.comparator_witness) Map.t
+
+module type Of_map_with_atomic_values = functor
+    (Key : Stable)
+    (Data : sig
+       type t [@@deriving bin_io, sexp]
+     end)
+    -> S with type t = (Key.t, Data.t, Key.comparator_witness) Map.t
+
+module type Of_map_with_atomic_values_rpc = functor
+    (Key : Stable_without_of_sexp)
+    (Data : Binable.S)
+    -> S_rpc with type t = (Key.t, Data.t, Key.comparator_witness) Map.t
 
 module type Of_total_map = functor (Key : Total_map.Key_with_witnesses) (Data : S) ->
   S
@@ -353,6 +365,8 @@ module type Main = sig
   module type Of_atomic_rpc = Of_atomic_rpc
   module type Of_map = Of_map
   module type Of_map_rpc = Of_map_rpc
+  module type Of_map_with_atomic_values = Of_map_with_atomic_values
+  module type Of_map_with_atomic_values_rpc = Of_map_with_atomic_values_rpc
   module type Of_total_map = Of_total_map
   module type Of_total_map_rpc = Of_total_map_rpc
   module type Of_hashtbl = Of_hashtbl
@@ -403,6 +417,8 @@ module type Main = sig
   module Of_atomic_rpc : Of_atomic_rpc
   module Of_map : Of_map
   module Of_map_rpc : Of_map_rpc
+  module Of_map_with_atomic_values : Of_map_with_atomic_values
+  module Of_map_with_atomic_values_rpc : Of_map_with_atomic_values_rpc
   module Of_total_map : Of_total_map
   module Of_total_map_rpc : Of_total_map_rpc
   module Of_hashtbl : Of_hashtbl
@@ -536,6 +552,14 @@ module type Main = sig
     module Of_map_rpc : sig
       module V1 : Of_map_rpc
       module V2 : Of_map_rpc
+    end
+
+    module Of_map_with_atomic_values : sig
+      module V1 : Of_map_with_atomic_values
+    end
+
+    module Of_map_with_atomic_values_rpc : sig
+      module V1 : Of_map_with_atomic_values_rpc
     end
 
     module Of_total_map : sig
@@ -711,6 +735,8 @@ module type Main = sig
       module Of_list_rpc = Of_list_rpc.V3
       module Of_map = Of_map.V2
       module Of_map_rpc = Of_map_rpc.V2
+      module Of_map_with_atomic_values = Of_map_with_atomic_values.V1
+      module Of_map_with_atomic_values_rpc = Of_map_with_atomic_values_rpc.V1
       module Of_nonempty_list = Of_nonempty_list.V1
       module Of_nonempty_list_rpc = Of_nonempty_list_rpc.V1
       module Of_option = Of_option.V2

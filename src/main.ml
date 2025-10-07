@@ -485,7 +485,62 @@ module Stable = struct
     end
   end
 
-  module Map_store (Key : Stable_without_of_sexp) (Data : S_rpc) = struct
+  module Of_key_value_store_with_atomic_values_rpc = struct
+    module V1
+        (Key : Stable_without_of_sexp)
+        (Data : Binable.S)
+        (Store : sig
+           type t
+
+           val create : unit -> t
+           val set : t -> key:Key.t -> data:Data.t -> t
+           val to_sequence : t -> (Key.t * Data.t) Sequence.t
+         end) =
+    struct
+      type t = Store.t
+
+      module Intermediate = struct
+        type nonrec t = t
+
+        module Part = struct
+          type t = Key.t * Data.t [@@deriving bin_io]
+        end
+
+        let create () = Store.create ()
+        let apply_part t (key, data) = Store.set t ~key ~data
+      end
+
+      let to_parts = Store.to_sequence
+      let finalize = Fn.id
+    end
+  end
+
+  module Of_key_value_store_with_atomic_values = struct
+    module V1
+        (Key : Stable)
+        (Data : sig
+           type t [@@deriving bin_io, sexp]
+         end)
+        (Store : sig
+           type t
+
+           val create : unit -> t
+           val set : t -> key:Key.t -> data:Data.t -> t
+           val to_sequence : t -> (Key.t * Data.t) Sequence.t
+         end) =
+    struct
+      module Plain = Of_key_value_store_with_atomic_values_rpc.V1 (Key) (Data) (Store)
+
+      include
+        Add_sexp.V1
+          (Plain)
+          (struct
+            type t = Key.t * Data.t [@@deriving sexp]
+          end)
+    end
+  end
+
+  module Map_store (Key : Stable_without_of_sexp) (Data : T) = struct
     type t = Data.t Map.M(Key).t
 
     let create () = Map.empty (module Key)
@@ -517,6 +572,38 @@ module Stable = struct
     end
 
     module V2 (Key : Stable) (Data : S) = Packed.V1 (V1 (Key) (Data))
+  end
+
+  module Of_map_with_atomic_values_rpc = struct
+    module V1_unpacked (Key : Stable_without_of_sexp) (Data : Binable.S) : sig
+      type t = (Key.t, Data.t, Key.comparator_witness) Map.t
+
+      include S_rpc with type t := t
+    end =
+      Of_key_value_store_with_atomic_values_rpc.V1 (Key) (Data) (Map_store (Key) (Data))
+
+    module V1 (Key : Stable_without_of_sexp) (Data : Binable.S) =
+      Packed_rpc.V1 (V1_unpacked (Key) (Data))
+  end
+
+  module Of_map_with_atomic_values = struct
+    module V1_unpacked
+        (Key : Stable)
+        (Data : sig
+           type t [@@deriving bin_io, sexp]
+         end) : sig
+      type t = (Key.t, Data.t, Key.comparator_witness) Map.t
+
+      include S with type t := t
+    end =
+      Of_key_value_store_with_atomic_values.V1 (Key) (Data) (Map_store (Key) (Data))
+
+    module V1
+        (Key : Stable)
+        (Data : sig
+           type t [@@deriving bin_io, sexp]
+         end) =
+      Packed.V1 (V1_unpacked (Key) (Data))
   end
 
   module Of_total_map = struct
@@ -2521,6 +2608,8 @@ module Stable = struct
     module Of_list_rpc = Of_list_rpc.V3
     module Of_map = Of_map.V2
     module Of_map_rpc = Of_map_rpc.V2
+    module Of_map_with_atomic_values = Of_map_with_atomic_values.V1
+    module Of_map_with_atomic_values_rpc = Of_map_with_atomic_values_rpc.V1
     module Of_nonempty_list = Of_nonempty_list.V1
     module Of_nonempty_list_rpc = Of_nonempty_list_rpc.V1
     module Of_option = Of_option.V2

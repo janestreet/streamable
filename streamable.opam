@@ -20,7 +20,7 @@ depends: [
   "ppx_jane"
   "ppxlib_jane"
   "dune"             {>= "3.17.0"}
-  "ppxlib"           {= "0.33.0+jst"}
+  "ppxlib"           {= "0.33.0+ox"}
 ]
 available: arch != "arm32" & arch != "x86_32"
 synopsis: "A collection of types suitable for incremental serialization."

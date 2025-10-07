@@ -63,6 +63,15 @@ module type X = sig
 end
 
 module type Keyed_container_clause = sig
+  module Matcher : sig
+    (** Generic matcher for keyed container types. Returns the key longident and value
+        types. *)
+    val match_keyed_container_type
+      :  (module X)
+      -> core_type:core_type
+      -> (longident * core_type list) option
+  end
+
   (** Generates a matcher that operates over types of the forms:
 
       {[

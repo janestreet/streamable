@@ -18,10 +18,34 @@ module type S_plus = sig
       -> query
       -> (state * update Pipe.Reader.t) Or_error.t Deferred.Or_error.t
 
+    val dispatch_with_rpc_result
+      :  Rpc.Connection.t
+      -> query
+      -> ( (state * update Pipe.Reader.t) Or_error.t
+           , Async_rpc_kernel.Rpc_error.t )
+           Deferred.Result.t
+
+    val dispatch_with_rpc_result_and_metadata
+      :  Rpc.Connection.t
+      -> query
+      -> metadata:Rpc_metadata.V2.t
+      -> ( (state * update Pipe.Reader.t) Or_error.t
+           , Async_rpc_kernel.Rpc_error.t )
+           Deferred.Result.t
+
     val implement
       :  ?on_exception:Rpc.On_exception.t
       -> ?leave_open_on_exception:bool
       -> ('c -> query -> (state * update Pipe.Reader.t) Deferred.Or_error.t)
+      -> 'c Rpc.Implementation.t
+
+    val implement_with_auth
+      :  ?on_exception:Rpc.On_exception.t
+      -> ?leave_open_on_exception:bool
+      -> ('c
+          -> query
+          -> (state * update Pipe.Reader.t) Async_rpc_kernel.Or_not_authorized.t
+               Deferred.t)
       -> 'c Rpc.Implementation.t
 
     val description : Rpc.Description.t
@@ -255,6 +279,20 @@ module Make (X : S) = struct
       type part = Intermediate.Part.t
     end
 
+    let implement_with_pipes state_pipe update_pipes =
+      Pipe.create_reader ~close_on_exception:true (fun w ->
+        let open Deferred.Let_syntax in
+        upon (Pipe.closed w) (fun () ->
+          (match Pipe.read_now' update_pipes with
+           | `Eof | `Nothing_available -> ()
+           | `Ok queue ->
+             Queue.iter queue ~f:(fun update_pipe -> Pipe.close_read update_pipe));
+          Pipe.close_read update_pipes);
+        let%bind () = write_msg w state_pipe ~constructor:(fun x -> Response.State x) in
+        Pipe.iter update_pipes ~f:(fun update_pipe ->
+          write_msg w update_pipe ~constructor:(fun x -> Update x)))
+    ;;
+
     let implement' ?on_exception ?leave_open_on_exception f =
       Rpc.Pipe_rpc.implement
         ?on_exception
@@ -263,20 +301,19 @@ module Make (X : S) = struct
         (fun c q ->
            let open Deferred.Or_error.Let_syntax in
            let%bind state_pipe, update_pipes = f c q in
-           return
-           @@ Pipe.create_reader ~close_on_exception:true (fun w ->
-             let open Deferred.Let_syntax in
-             upon (Pipe.closed w) (fun () ->
-               (match Pipe.read_now' update_pipes with
-                | `Eof | `Nothing_available -> ()
-                | `Ok queue ->
-                  Queue.iter queue ~f:(fun update_pipe -> Pipe.close_read update_pipe));
-               Pipe.close_read update_pipes);
-             let%bind () =
-               write_msg w state_pipe ~constructor:(fun x -> Response.State x)
-             in
-             Pipe.iter update_pipes ~f:(fun update_pipe ->
-               write_msg w update_pipe ~constructor:(fun x -> Update x))))
+           implement_with_pipes state_pipe update_pipes |> return)
+    ;;
+
+    let implement_with_auth' ?on_exception ?leave_open_on_exception f =
+      Rpc.Pipe_rpc.implement_with_auth
+        ?on_exception
+        ?leave_open_on_exception
+        rpc
+        (fun c q ->
+           let%map.Async_rpc_kernel.Or_not_authorized.Deferred state_pipe, update_pipes =
+             f c q
+           in
+           implement_with_pipes state_pipe update_pipes |> Result.return)
     ;;
 
     let implement ?on_exception ?leave_open_on_exception f =
@@ -287,6 +324,13 @@ module Make (X : S) = struct
           ( State.to_parts state |> Pipe.of_sequence
           , Pipe.map updates ~f:(fun update -> Update.to_parts update |> Pipe.of_sequence)
           ))
+    ;;
+
+    let implement_with_auth ?on_exception ?leave_open_on_exception f =
+      implement_with_auth' ?on_exception ?leave_open_on_exception (fun c q ->
+        let%map.Async_rpc_kernel.Or_not_authorized.Deferred state, updates = f c q in
+        ( State.to_parts state |> Pipe.of_sequence
+        , Pipe.map updates ~f:(fun update -> Update.to_parts update |> Pipe.of_sequence) ))
     ;;
 
     let read_state r =
@@ -301,35 +345,49 @@ module Make (X : S) = struct
         | State _ -> Or_error.errorf "Streamable.State_rpc: incomplete update message")
     ;;
 
-    let dispatch' conn query =
-      let%bind server_response = Rpc.Pipe_rpc.dispatch rpc conn query in
+    let dispatch_gen dispatch conn query =
+      let%bind.Deferred.Result server_response = dispatch rpc conn query in
       match server_response with
-      | Error _ as error -> return error
+      | Error _ as error -> Deferred.Result.return error
       | Ok (r, _) ->
-        let%bind initial_state = read_state r in
-        let updates =
-          Pipe.create_reader ~close_on_exception:true (fun w ->
-            let open Deferred.Let_syntax in
-            let rec loop () =
-              match%bind
-                Deferred.choose
-                  [ Deferred.choice (read_update r) Result.ok
-                  ; Deferred.choice (Pipe.closed w) (fun () -> None)
-                  ]
-              with
-              | Some update ->
-                let%bind () = Pipe.write_if_open w update in
-                loop ()
-              | None -> return ()
-            in
-            let%bind () = loop () in
-            Pipe.close_read r;
-            return ())
-        in
-        return (Ok (initial_state, updates))
+        (match%bind.Deferred read_state r with
+         | Error _ as error -> Deferred.Result.return error
+         | Ok initial_state ->
+           let updates =
+             Pipe.create_reader ~close_on_exception:true (fun w ->
+               let open Deferred.Let_syntax in
+               let rec loop () =
+                 match%bind
+                   Deferred.choose
+                     [ Deferred.choice (read_update r) Result.ok
+                     ; Deferred.choice (Pipe.closed w) (fun () -> None)
+                     ]
+                 with
+                 | Some update ->
+                   let%bind () = Pipe.write_if_open w update in
+                   loop ()
+                 | None -> return ()
+               in
+               let%bind () = loop () in
+               Pipe.close_read r;
+               return ())
+           in
+           Deferred.Result.return (Ok (initial_state, updates)))
     ;;
 
+    let dispatch' conn query = dispatch_gen Rpc.Pipe_rpc.dispatch conn query
     let dispatch conn query = dispatch' conn query |> Deferred.map ~f:Or_error.join
+
+    let dispatch_with_rpc_result conn query =
+      dispatch_gen Rpc.Pipe_rpc.dispatch' conn query
+    ;;
+
+    let dispatch_with_rpc_result_and_metadata conn query ~metadata =
+      dispatch_gen
+        (Rpc.Pipe_rpc.Expert.dispatch_bin_prot_with_metadata' ~metadata)
+        conn
+        query
+    ;;
   end
 
   module X_plus = struct
@@ -359,6 +417,16 @@ let description (type q s u) ((module X) : (q, s, u) t) = X.Underlying_rpc.descr
 let dispatch (type q s u) ((module X) : (q, s, u) t) = X.Underlying_rpc.dispatch
 let dispatch' (type q s u) ((module X) : (q, s, u) t) = X.Underlying_rpc.dispatch'
 
+let dispatch_with_rpc_result (type q s u) ((module X) : (q, s, u) t) =
+  X.Underlying_rpc.dispatch_with_rpc_result
+;;
+
+module Expert = struct
+  let dispatch_with_rpc_result_and_metadata (type q s u) ((module X) : (q, s, u) t) =
+    X.Underlying_rpc.dispatch_with_rpc_result_and_metadata
+  ;;
+end
+
 let implement
   (type q s u)
   ?on_exception
@@ -366,6 +434,15 @@ let implement
   ((module X) : (q, s, u) t)
   =
   X.Underlying_rpc.implement ?on_exception ?leave_open_on_exception
+;;
+
+let implement_with_auth
+  (type q s u)
+  ?on_exception
+  ?leave_open_on_exception
+  ((module X) : (q, s, u) t)
+  =
+  X.Underlying_rpc.implement_with_auth ?on_exception ?leave_open_on_exception
 ;;
 
 let bin_query_shape (type q s u) ((module X) : (q, s, u) t) = X.bin_query.shape
@@ -377,3 +454,6 @@ let bin_state_shape (type q s u) ((module X) : (q, s, u) t) =
 let bin_update_shape (type q s u) ((module X) : (q, s, u) t) =
   X.Update.Intermediate.Part.bin_t.shape
 ;;
+
+let version (type q s u) ((module X) : (q, s, u) t) = X.version
+let name (type q s u) ((module X) : (q, s, u) t) = X.name

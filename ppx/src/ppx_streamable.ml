@@ -387,5 +387,5 @@ let streamable =
       (Deriving.Generator.make
          Structure.args
          Structure.generate
-         ~attributes:[ T Attributes.atomic ])
+         ~attributes:[ T Attributes.atomic; T Attributes.map_with_atomic_values ])
 ;;
