@@ -168,14 +168,14 @@ let of_flat_variant ~loc t =
   let t = number t in
   let paths = paths t in
   let cases = List.map paths ~f:(of_flat_variant_case ~loc) in
-  pexp_function ~loc cases
+  pexp_function_cases ~loc cases
 ;;
 
 let to_flat_variant ~loc t =
   let t = number t in
   let paths = paths t in
   let cases = List.map paths ~f:(to_flat_variant_case ~loc) in
-  pexp_function ~loc cases
+  pexp_function_cases ~loc cases
 ;;
 
 let rec streamable_module ctx t =
