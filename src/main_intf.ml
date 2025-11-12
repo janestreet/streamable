@@ -56,7 +56,11 @@ module type Of_map_with_atomic_values = functor
 
 module type Of_map_with_atomic_values_rpc = functor
     (Key : Stable_without_of_sexp)
-    (Data : Binable.S)
+    (Data : sig
+       type t
+
+       include Binable.S with type t := t
+     end)
     -> S_rpc with type t = (Key.t, Data.t, Key.comparator_witness) Map.t
 
 module type Of_total_map = functor (Key : Total_map.Key_with_witnesses) (Data : S) ->
