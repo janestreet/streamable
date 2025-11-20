@@ -37,7 +37,7 @@ module type Pipe_rpc = sig
     -> 'r Pipe.Reader.t Or_error.t Deferred.Or_error.t
 
   val implement
-    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
     -> ?leave_open_on_exception:bool (** default: See [Async_rpc.Pipe_rpc.implement] *)
     -> ('q, 'r) t
     -> ('conn_state -> 'q -> 'r Pipe.Reader.t Deferred.Or_error.t)
@@ -52,7 +52,7 @@ module type Pipe_rpc = sig
     (** [implement'] is like [implement rpc] except that it allows the server to control
         the conversion from [response]s to parts. *)
     val implement'
-      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
       -> ('conn_state
           -> X.query
           -> X.Response.Intermediate.Part.t Pipe.Reader.t Pipe.Reader.t

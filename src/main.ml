@@ -2219,7 +2219,11 @@ module Stable = struct
   end
 
   module Of_sexpable = struct
-    module V1 (Sexpable : Sexpable) =
+    module V1 (Sexpable : sig
+        type t
+
+        include Sexpable with type t := t
+      end) =
       Of_streamable.V1
         (Of_sexps.V1)
         (struct

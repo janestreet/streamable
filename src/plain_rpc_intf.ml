@@ -53,13 +53,13 @@ module type Plain_rpc = sig
   end
 
   val implement
-    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
     -> ('q, 'r) t
     -> ('conn_state -> 'q -> 'r Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t
 
   val implement_with_auth
-    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
     -> ('q, 'r) t
     -> ('conn_state -> 'q -> 'r Or_not_authorized.t Deferred.t)
     -> 'conn_state Rpc.Implementation.t
@@ -117,14 +117,14 @@ module type Plain_rpc = sig
     (** [implement'] is like [implement rpc] except that it allows the server to control
         the conversion from the [response] to parts. *)
     val implement'
-      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
       -> ('conn_state
           -> X.query
           -> X.Response.Intermediate.Part.t Pipe.Reader.t Deferred.Or_error.t)
       -> 'conn_state Rpc.Implementation.t
 
     val implement_direct
-      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
       -> ('conn_state
           -> X.query
           -> X.Response.Intermediate.Part.t Direct_writer.t

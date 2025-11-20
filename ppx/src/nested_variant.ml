@@ -52,8 +52,8 @@ let rec create = function
        let d = create d in
        V4 (a, b, c, d)
      | _ ->
-       (* It's not obvious that the above cases are exhaustive, but they are.
-          See [../test/test_nested_variant.ml] to convince yourself. *)
+       (* It's not obvious that the above cases are exhaustive, but they are. See
+          [../test/test_nested_variant.ml] to convince yourself. *)
        assert false)
 ;;
 

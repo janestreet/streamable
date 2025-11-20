@@ -132,17 +132,17 @@ module Structure = struct
      the next one. The groups are defined in the following order:
 
      (1) First, we just try applying [Atomic_clause]. If it matches, we should not recurse
-     any further.
+         any further.
 
      (2) If that fails, we try applying all "ordinary" clauses.
 
      (3) If that fails, we try applying [Parameterized_type_clause]. We consider this
-     separately since we'd otherwise have multiple clauses matching known parameterized
-     types like [_ Option.t] within the same group.
+         separately since we'd otherwise have multiple clauses matching known
+         parameterized types like [_ Option.t] within the same group.
 
      (4) Finally, we try applying [Module_dot_t_clause]. We consider this separately since
-     we'd otherwise have multiple clauses matching known types like [Sexp.t] within the
-     same group. *)
+         we'd otherwise have multiple clauses matching known types like [Sexp.t] within
+         the same group. *)
   let clause_groups_in_descending_order_of_precedence =
     [ [ Atomic_clause.maybe_match ]
     ; all_ordinary_clauses
@@ -155,8 +155,8 @@ module Structure = struct
     match maybe_match type_ { Ctx.loc; rpc; version } with
     | None -> None
     | Some { Clause.Match.apply_functor; children } ->
-      (* We recognize the top-level structure of a type expression, now
-         recurse on any arguments it may have. *)
+      (* We recognize the top-level structure of a type expression, now recurse on any
+         arguments it may have. *)
       Some
         (apply_functor
            { loc; rpc; version }

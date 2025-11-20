@@ -333,7 +333,13 @@ module type Of_streamable_rpc = functor
      end)
     -> S_rpc with type t = X.t
 
-module type Of_sexpable = functor (Sexpable : Sexpable) -> S with type t = Sexpable.t
+module type Of_sexpable = functor
+    (Sexpable : sig
+       type t
+
+       include Sexpable with type t := t
+     end)
+    -> S with type t = Sexpable.t
 
 (** The [Fixpoint] functor can be used to make recursive types streamable *)
 module type Fixpoint = functor

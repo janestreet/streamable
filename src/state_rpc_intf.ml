@@ -62,14 +62,14 @@ module type State_rpc = sig
   end
 
   val implement
-    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
     -> ?leave_open_on_exception:bool (** default: See [Async_rpc.Pipe_rpc.implement] *)
     -> ('q, 's, 'u) t
     -> ('conn_state -> 'q -> ('s * 'u Pipe.Reader.t) Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t
 
   val implement_with_auth
-    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
     -> ?leave_open_on_exception:bool (** default: See [Async_rpc.Pipe_rpc.implement] *)
     -> ('q, 's, 'u) t
     -> ('conn_state -> 'q -> ('s * 'u Pipe.Reader.t) Or_not_authorized.t Deferred.t)
@@ -199,7 +199,7 @@ module type State_rpc = sig
     (** [implement'] is like [implement rpc] except that it allows the server to control
         the conversion from the [state] and [update]s to parts. *)
     val implement'
-      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
       -> ('conn_state
           -> X.query
           -> (X.State.Intermediate.Part.t Pipe.Reader.t
@@ -208,7 +208,7 @@ module type State_rpc = sig
       -> 'conn_state Rpc.Implementation.t
 
     val implement_direct
-      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+      :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
       -> ('conn_state
           -> X.query
           -> (X.State.Intermediate.Part.t, X.Update.Intermediate.Part.t) Direct_writer.t
