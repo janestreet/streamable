@@ -488,7 +488,11 @@ module Stable = struct
   module Of_key_value_store_with_atomic_values_rpc = struct
     module V1
         (Key : Stable_without_of_sexp)
-        (Data : Binable.S)
+        (Data : sig
+           type t
+
+           include Binable.S with type t := t
+         end)
         (Store : sig
            type t
 
@@ -575,14 +579,26 @@ module Stable = struct
   end
 
   module Of_map_with_atomic_values_rpc = struct
-    module V1_unpacked (Key : Stable_without_of_sexp) (Data : Binable.S) : sig
+    module V1_unpacked
+        (Key : Stable_without_of_sexp)
+        (Data : sig
+           type t
+
+           include Binable.S with type t := t
+         end) : sig
       type t = (Key.t, Data.t, Key.comparator_witness) Map.t
 
       include S_rpc with type t := t
     end =
       Of_key_value_store_with_atomic_values_rpc.V1 (Key) (Data) (Map_store (Key) (Data))
 
-    module V1 (Key : Stable_without_of_sexp) (Data : Binable.S) =
+    module V1
+        (Key : Stable_without_of_sexp)
+        (Data : sig
+           type t
+
+           include Binable.S with type t := t
+         end) =
       Packed_rpc.V1 (V1_unpacked (Key) (Data))
   end
 
@@ -2203,7 +2219,11 @@ module Stable = struct
   end
 
   module Of_sexpable = struct
-    module V1 (Sexpable : Sexpable) =
+    module V1 (Sexpable : sig
+        type t
+
+        include Sexpable with type t := t
+      end) =
       Of_streamable.V1
         (Of_sexps.V1)
         (struct

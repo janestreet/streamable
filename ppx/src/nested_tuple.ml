@@ -71,8 +71,8 @@ let create constructors =
          let i = loop i in
          T9 (a, b, c, d, e, f, g, h, i)
        | _ ->
-         (* It's not obvious that the above cases are exhaustive, but they are.
-            See [../test/test_nested_tuple.ml] to convince yourself. *)
+         (* It's not obvious that the above cases are exhaustive, but they are. See
+            [../test/test_nested_tuple.ml] to convince yourself. *)
          assert false)
   in
   loop constructors

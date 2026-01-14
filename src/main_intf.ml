@@ -56,7 +56,11 @@ module type Of_map_with_atomic_values = functor
 
 module type Of_map_with_atomic_values_rpc = functor
     (Key : Stable_without_of_sexp)
-    (Data : Binable.S)
+    (Data : sig
+       type t
+
+       include Binable.S with type t := t
+     end)
     -> S_rpc with type t = (Key.t, Data.t, Key.comparator_witness) Map.t
 
 module type Of_total_map = functor (Key : Total_map.Key_with_witnesses) (Data : S) ->
@@ -329,7 +333,13 @@ module type Of_streamable_rpc = functor
      end)
     -> S_rpc with type t = X.t
 
-module type Of_sexpable = functor (Sexpable : Sexpable) -> S with type t = Sexpable.t
+module type Of_sexpable = functor
+    (Sexpable : sig
+       type t
+
+       include Sexpable with type t := t
+     end)
+    -> S with type t = Sexpable.t
 
 (** The [Fixpoint] functor can be used to make recursive types streamable *)
 module type Fixpoint = functor

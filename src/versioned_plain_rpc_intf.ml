@@ -24,7 +24,7 @@ module type Callee_converts = sig
   type response
 
   val implement_multi
-    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
     -> ('conn_state -> version:int -> query -> response Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t list
 
@@ -48,7 +48,7 @@ module type Both_convert = sig
     -> caller_response Or_error.t Deferred.Or_error.t
 
   val implement_multi
-    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+    :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
     -> ('conn_state -> version:int -> callee_query -> callee_response Deferred.Or_error.t)
     -> 'conn_state Rpc.Implementation.t list
 
@@ -86,7 +86,7 @@ module type Versioned_plain_rpc = sig
         (** [implement'] is like [Plain_rpc.implement rpc] except that it allows the
             server to control the conversion from the [response] to parts. *)
         val implement'
-          :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+          :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
           -> ('conn_state
               -> Version.query
               -> Version.Response.Intermediate.Part.t Pipe.Reader.t Deferred.Or_error.t)
@@ -123,7 +123,7 @@ module type Versioned_plain_rpc = sig
         (** [implement'] is like [Plain_rpc.implement rpc] except that it allows the
             server to control the conversion from the [response] to parts. *)
         val implement'
-          :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+          :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
           -> ('conn_state
               -> Version.query
               -> Version.Response.Intermediate.Part.t Pipe.Reader.t Deferred.Or_error.t)
@@ -171,7 +171,7 @@ module type Versioned_plain_rpc = sig
         (** [implement'] is like [Plain_rpc.implement rpc] except that it allows the
             server to control the conversion from the [response] to parts. *)
         val implement'
-          :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] **)
+          :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
           -> ('conn_state
               -> Version.query
               -> Version.Response.Intermediate.Part.t Pipe.Reader.t Deferred.Or_error.t)

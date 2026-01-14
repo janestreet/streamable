@@ -20,9 +20,9 @@ let maybe_match type_ (_ : Ctx.t) =
    ; apply_functor =
        (fun ctx (_ : module_expr list) ->
          Helpers.apply_streamable_dot
-           (* NOTE: There is no [Of_sexpable_rpc] since, by definition, there must be
-               both [of_sexp] and [sexp_of]. As a result, explicitly ask for the functor
-               without the "_rpc" suffix. *)
+           (* NOTE: There is no [Of_sexpable_rpc] since, by definition, there must be both
+              [of_sexp] and [sexp_of]. As a result, explicitly ask for the functor without
+              the "_rpc" suffix. *)
            { ctx with rpc = false }
            ~functor_name:[%string "Of_sexpable"]
            ~arguments:[ pmod_ident ~loc:ctx.loc module_ ])
