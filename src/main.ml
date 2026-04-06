@@ -696,7 +696,9 @@ module Stable = struct
 
     module V1
         (Key : sig
-           include Hashtbl.Key_plain
+           type t
+
+           include Hashtbl.Key_plain with type t := t
            include Stable_without_of_sexp with type t := t
          end)
         (Data : S_rpc) =

@@ -1,7 +1,13 @@
 open! Base
 open! Import
 
-let maybe_match type_ (_ : Ctx.t) =
+module Longident = struct
+  include Longident
+
+  let compare__local : t @ local -> t @ local -> int = Poly.compare__local
+end
+
+let%template maybe_match type_ (_ : Ctx.t) =
   let%bind core_type = Type_.match_core_type type_ in
   let module_name = Helpers.if_module_dot_t_then_module core_type in
   let%map type_parameters =
@@ -10,8 +16,8 @@ let maybe_match type_ (_ : Ctx.t) =
     | Ptyp_constr (longident_loc, type_parameters) ->
       (match Helpers.split_longident longident_loc, module_name with
        | Some (`prefix (Some module_name'), `last "t"), Some module_name
-         when [%compare.equal: Longident.t] module_name.txt module_name' ->
-         Some type_parameters
+         when ([%compare.equal: Longident.t] [@mode local]) module_name.txt module_name'
+         -> Some type_parameters
        | Some (`prefix None, `last "t"), None -> Some type_parameters
        | _ -> None)
     | _ -> None

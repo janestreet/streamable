@@ -1,9 +1,6 @@
-(alias
- (name default)
- (deps readmes.diff-for-review))
-
 (rule
  (targets readmes.diff-for-review)
+ (alias default)
  (deps README.mkd README.open-source.mkd)
  (action
   (bash "%{bin:patdiff-for-review} %{bin:patdiff} %{deps} > %{targets}")))
