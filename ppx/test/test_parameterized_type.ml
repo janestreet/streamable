@@ -617,3 +617,214 @@ include Test.Is_S_rpc (struct
 
     [@@@end]
   end)
+
+(* Large parameterized record (≥10 fields triggers nested tuple wrapping) *)
+module F_large_record = struct
+  type ('a, _) t =
+    { f1 : 'a option
+    ; f2 : unit
+    ; f3 : unit
+    ; f4 : unit
+    ; f5 : unit
+    ; f6 : unit
+    ; f7 : unit
+    ; f8 : unit
+    ; f9 : unit
+    ; f10 : unit
+    }
+  [@@deriving_inline streamable ~version:1]
+
+  module Make_streamable (A : Streamable.S) (Unnamed_type_parameter1 : Streamable.S) =
+  struct
+    type nonrec t = (A.t, Unnamed_type_parameter1.t) t
+
+    include
+      Streamable.Stable.V1.Remove_t
+        (Streamable.Stable.V1.Of_streamable
+           (Streamable.Stable.V1.Of_streamable
+              (Streamable.Stable.V1.Of_tuple5
+                 (Streamable.Stable.V1.Of_tuple2
+                    (Streamable.Stable.V1.Of_option
+                       (A))
+                       (Streamable.Stable.V1.Of_atomic (Core.Unit)))
+                    (Streamable.Stable.V1.Of_tuple2
+                       (Streamable.Stable.V1.Of_atomic
+                          (Core.Unit))
+                          (Streamable.Stable.V1.Of_atomic (Core.Unit)))
+                    (Streamable.Stable.V1.Of_tuple2
+                       (Streamable.Stable.V1.Of_atomic
+                          (Core.Unit))
+                          (Streamable.Stable.V1.Of_atomic (Core.Unit)))
+                 (Streamable.Stable.V1.Of_tuple2
+                    (Streamable.Stable.V1.Of_atomic
+                       (Core.Unit))
+                       (Streamable.Stable.V1.Of_atomic (Core.Unit)))
+                 (Streamable.Stable.V1.Of_tuple2
+                    (Streamable.Stable.V1.Of_atomic
+                       (Core.Unit))
+                       (Streamable.Stable.V1.Of_atomic (Core.Unit))))
+                 (struct
+                   type t =
+                     A.t option
+                     * unit
+                     * unit
+                     * unit
+                     * unit
+                     * unit
+                     * unit
+                     * unit
+                     * unit
+                     * unit
+
+                   let to_streamable (j, i, h, g, f, e, d, c, b, a) =
+                     (j, i), (h, g), (f, e), (d, c), (b, a)
+                   ;;
+
+                   let of_streamable ((j, i), (h, g), (f, e), (d, c), (b, a)) =
+                     j, i, h, g, f, e, d, c, b, a
+                   ;;
+                 end))
+                 (struct
+                   type nonrec t = t
+
+                   let to_streamable { f1; f2; f3; f4; f5; f6; f7; f8; f9; f10 } =
+                     f1, f2, f3, f4, f5, f6, f7, f8, f9, f10
+                   ;;
+
+                   let of_streamable (f1, f2, f3, f4, f5, f6, f7, f8, f9, f10) =
+                     { f1; f2; f3; f4; f5; f6; f7; f8; f9; f10 }
+                   ;;
+                 end))
+  end
+
+  [@@@end]
+end
+
+include Test.Is_S (struct
+    type t = (int, string) F_large_record.t [@@deriving_inline streamable ~version:1]
+
+    include
+      Streamable.Stable.V1.Remove_t
+        (F_large_record.Make_streamable
+           (Streamable.Stable.V1.Of_atomic
+              (Core.Int))
+              (Streamable.Stable.V1.Of_atomic (Core.String)))
+
+    [@@@end]
+  end)
+
+(* Large parameterized record with many type parameters *)
+module F_large_record_with_many_type_parameters = struct
+  type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k) t =
+    { f1 : 'a option
+    ; f2 : 'b
+    ; f3 : 'c
+    ; f4 : 'd
+    ; f5 : 'e option
+    ; f6 : 'f
+    ; f7 : 'g
+    ; f8 : 'h
+    ; f9 : 'i * 'k
+    ; f10 : 'j
+    }
+  [@@deriving_inline streamable ~version:1]
+
+  module Make_streamable
+      (A : Streamable.S)
+      (B : Streamable.S)
+      (C : Streamable.S)
+      (D : Streamable.S)
+      (E : Streamable.S)
+      (F : Streamable.S)
+      (G : Streamable.S)
+      (H : Streamable.S)
+      (I : Streamable.S)
+      (J : Streamable.S)
+      (K : Streamable.S) =
+  struct
+    type nonrec t = (A.t, B.t, C.t, D.t, E.t, F.t, G.t, H.t, I.t, J.t, K.t) t
+
+    include
+      Streamable.Stable.V1.Remove_t
+        (Streamable.Stable.V1.Of_streamable
+           (Streamable.Stable.V1.Of_streamable
+              (Streamable.Stable.V1.Of_tuple5
+                 (Streamable.Stable.V1.Of_tuple2
+                    (Streamable.Stable.V1.Of_option (A)) (B))
+                    (Streamable.Stable.V1.Of_tuple2 (C) (D))
+                    (Streamable.Stable.V1.Of_tuple2
+                       (Streamable.Stable.V1.Of_option (E)) (F))
+                 (Streamable.Stable.V1.Of_tuple2 (G) (H))
+                 (Streamable.Stable.V1.Of_tuple2
+                    (Streamable.Stable.V1.Of_tuple2 (I) (K)) (J)))
+                 (struct
+                   type t =
+                     A.t option
+                     * B.t
+                     * C.t
+                     * D.t
+                     * E.t option
+                     * F.t
+                     * G.t
+                     * H.t
+                     * (I.t * K.t)
+                     * J.t
+
+                   let to_streamable (j, i, h, g, f, e, d, c, b, a) =
+                     (j, i), (h, g), (f, e), (d, c), (b, a)
+                   ;;
+
+                   let of_streamable ((j, i), (h, g), (f, e), (d, c), (b, a)) =
+                     j, i, h, g, f, e, d, c, b, a
+                   ;;
+                 end))
+                 (struct
+                   type nonrec t = t
+
+                   let to_streamable { f1; f2; f3; f4; f5; f6; f7; f8; f9; f10 } =
+                     f1, f2, f3, f4, f5, f6, f7, f8, f9, f10
+                   ;;
+
+                   let of_streamable (f1, f2, f3, f4, f5, f6, f7, f8, f9, f10) =
+                     { f1; f2; f3; f4; f5; f6; f7; f8; f9; f10 }
+                   ;;
+                 end))
+  end
+
+  [@@@end]
+end
+
+include Test.Is_S (struct
+    type t =
+      ( int
+        , string
+        , int
+        , string
+        , int
+        , string
+        , int
+        , string
+        , int
+        , string
+        , float )
+        F_large_record_with_many_type_parameters.t
+    [@@deriving_inline streamable ~version:1]
+
+    include
+      Streamable.Stable.V1.Remove_t
+        (F_large_record_with_many_type_parameters.Make_streamable
+           (Streamable.Stable.V1.Of_atomic
+              (Core.Int))
+              (Streamable.Stable.V1.Of_atomic (Core.String))
+           (Streamable.Stable.V1.Of_atomic (Core.Int))
+           (Streamable.Stable.V1.Of_atomic (Core.String))
+           (Streamable.Stable.V1.Of_atomic (Core.Int))
+           (Streamable.Stable.V1.Of_atomic (Core.String))
+           (Streamable.Stable.V1.Of_atomic (Core.Int))
+           (Streamable.Stable.V1.Of_atomic (Core.String))
+           (Streamable.Stable.V1.Of_atomic (Core.Int))
+           (Streamable.Stable.V1.Of_atomic (Core.String))
+           (Streamable.Stable.V1.Of_atomic (Core.Float)))
+
+    [@@@end]
+  end)

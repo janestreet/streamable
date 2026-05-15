@@ -69,7 +69,7 @@ module type Plain_rpc = sig
   val version : _ t -> int
   val name : _ t -> string
 
-  module Direct_writer : sig
+  module Direct_parts_writer : sig
     type 'response_part t
 
     (** Write a part of the response. Returns [`Closed] if [t] is closed. Will raise if
@@ -127,7 +127,7 @@ module type Plain_rpc = sig
       :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
       -> ('conn_state
           -> X.query
-          -> X.Response.Intermediate.Part.t Direct_writer.t
+          -> X.Response.Intermediate.Part.t Direct_parts_writer.t
           -> unit Deferred.Or_error.t)
       -> 'conn_state Rpc.Implementation.t
   end

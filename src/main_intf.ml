@@ -790,4 +790,13 @@ module type Main = sig
       module Remove_t_rpc = Remove_t_rpc
     end
   end
+
+  module For_testing : sig
+    module Packed_rpc : sig
+      (** Override for the maximum serialised size (in bytes) of a packed outer [Part.t]
+          produced by [Streamable.Packed_rpc.V1.to_parts]. Defaults to 25 under
+          [Ppx_inline_test_lib.am_running] and 131_072 otherwise. *)
+      val pack_threshold : int ref
+    end
+  end
 end
