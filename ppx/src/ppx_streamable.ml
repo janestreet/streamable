@@ -317,6 +317,51 @@ module Structure = struct
                    [%here]
                    (string_of_core_type type_parameter)]))
     in
+    (* Build a substitution that replaces type variables (e.g. ['a]) with references to
+       the corresponding functor parameter module types (e.g. [A.t]). This is necessary
+       because we erase [ptype_params] below, but field types may still reference the
+       original type variables. For small types (≤9 record fields or ≤4 variant
+       constructors) this is harmless since the raw core_types are only used for clause
+       matching. But for larger types, nested tuple/variant wrapping generates a
+       [type t = ...] declaration from the raw core_types, and unsubstituted type
+       variables would be unbound in that context. *)
+    let substitute_type_vars =
+      let type_var_subst =
+        List.filter_map
+          (List.zip_exn type_dec.ptype_params type_parameter_module_names)
+          ~f:(fun ((type_parameter, _), module_name) ->
+            match
+              Ppxlib_jane.Shim.Core_type_desc.of_parsetree type_parameter.ptyp_desc
+            with
+            | Ptyp_var (name, _) -> Some (name, module_name)
+            | _ -> None)
+        |> Map.of_alist_exn (module String)
+      in
+      object
+        inherit Ast_traverse.map as super
+
+        method! core_type ct =
+          match Ppxlib_jane.Shim.Core_type_desc.of_parsetree ct.ptyp_desc with
+          | Ptyp_var (name, _) ->
+            (match Map.find type_var_subst name with
+             | Some module_name ->
+               (* Consume any streamable-specific attributes on the original type variable
+                  so ppxlib does not report them as unused. Before this substitution,
+                  these attributes would have been consumed during clause matching (e.g.
+                  by [Atomic_clause.maybe_match] calling [Attribute.get]) even though the
+                  clause would not have matched a [Ptyp_var] overall. *)
+               let (_ : unit option) = Attribute.get Attributes.atomic ct in
+               let (_ : unit option) =
+                 Attribute.get Attributes.map_with_atomic_values ct
+               in
+               ptyp_constr
+                 ~loc:ct.ptyp_loc
+                 (Loc.make ~loc:ct.ptyp_loc (Longident.Ldot (Lident module_name, "t")))
+                 []
+             | None -> super#core_type ct)
+          | _ -> super#core_type ct
+      end
+    in
     let functor_body =
       let type_nonrec_t =
         let concrete_t =
@@ -333,9 +378,10 @@ module Structure = struct
       in
       let include_streamable =
         (* Generate the body of the functor by calling [generate_for_one_type] on this
-           type with all type parameters erased. *)
+           type with all type parameters erased and type variables substituted with the
+           corresponding functor parameter module types. *)
         generate_for_one_type
-          { type_dec with ptype_params = [] }
+          (substitute_type_vars#type_declaration { type_dec with ptype_params = [] })
           ~loc
           ~atomic
           ~rpc

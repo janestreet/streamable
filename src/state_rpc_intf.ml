@@ -81,7 +81,7 @@ module type State_rpc = sig
   val version : _ t -> int
   val name : _ t -> string
 
-  module Direct_writer : sig
+  module Direct_parts_writer : sig
     type ('state_part, 'update_part) t
 
     (** Write a part of the initial state. Returns [`Closed] if [t] is closed.
@@ -174,10 +174,10 @@ module type State_rpc = sig
         -> unit
 
       (** Write an update part on all direct writers in the group. Contrary to
-          [Direct_writer.write_without_pushback], this cannot return [`Closed] as elements
-          of the group are removed immediately when they are closed, and it cannot raise
-          due to initial state not being finalised as this is checked when adding to the
-          group. *)
+          [Direct_parts_writer.write_without_pushback], this cannot return [`Closed] as
+          elements of the group are removed immediately when they are closed, and it
+          cannot raise due to initial state not being finalised as this is checked when
+          adding to the group. *)
       val write_update_without_pushback : (_, 'update_part) t -> 'update_part -> unit
 
       (** Finalise the current update on all direct writers in the group. *)
@@ -211,7 +211,9 @@ module type State_rpc = sig
       :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)
       -> ('conn_state
           -> X.query
-          -> (X.State.Intermediate.Part.t, X.Update.Intermediate.Part.t) Direct_writer.t
+          -> ( X.State.Intermediate.Part.t
+               , X.Update.Intermediate.Part.t )
+               Direct_parts_writer.t
           -> unit Deferred.Or_error.t)
       -> 'conn_state Rpc.Implementation.t
   end

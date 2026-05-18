@@ -249,14 +249,65 @@ module Stable = struct
   end
 
   module Packed_rpc = struct
+    (* Max serialized size (in bytes) of an outer [Part.t] produced by [to_parts]. A
+       smaller value produces smaller, more numerous packed parts; a larger value packs
+       more aggressively. Practice shows that 2^18 is not too high, but (as of 2016-08-11)
+       we shouldn't exceed 2^18 due to some limitations in writer.ml. *)
+    let pack_threshold =
+      ref
+        (if Ppx_inline_test_lib.am_running
+         then 25 (* something small enough to test both sides of easily *)
+         else 131_072 (* 2^17 gives us some room to grow in outer parts *))
+    ;;
+
+    (* We do this slightly cursed thing because we used to derive bin_io via Fqueue
+       instead, but the bin-size implementation for Fqueue allocates (because it needs to
+       reverse one of the two lists making up the queue), so it's better to precompute the
+       [Fqueue.to_list] before finalizing each [Part]. *)
+    module List_pretending_to_be_fdeque = struct
+      type 'a t = 'a list
+
+      include Bin_prot.Utils.Make_iterable_binable1 (struct
+          type nonrec 'a t = 'a t
+          type 'a el = 'a [@@deriving bin_io]
+
+          (* We've been careful to preserve the same serialization as [Core.Fqueue.t]
+             (which is the same as [Core.Fdeque.t]) so that we can get away with providing
+             the same [caller_identity] (i.e. we are claiming that the serialization has
+             been stably preserved). *)
+          let caller_identity =
+            Bin_prot.Shape.Uuid.of_string "83f96982-4992-11e6-919d-fbddcfdca576"
+          ;;
+
+          let module_name =
+            Some "Streamable.Stable.Packed_rpc.V1.List_pretending_to_be_fdeque"
+          ;;
+
+          let length = List.length
+          let iter = List.iter
+          let init ~len ~next = List.init len ~f:(fun _i -> next ()) |> List.rev
+        end)
+
+      let%test_unit "bin_io matches Fdeque.t" =
+        (* Exercises the claim above that we have preserved the [Fdeque.t] wire format
+           exactly. *)
+        Quickcheck.test
+          (Fdeque.quickcheck_generator Int.quickcheck_generator)
+          ~sexp_of:[%sexp_of: int Fdeque.t]
+          ~f:(fun xs ->
+            let list_bytes =
+              Bin_prot.Writer.to_string [%bin_writer: int t] (Fdeque.to_list xs)
+            in
+            let fdeque_bytes = Bin_prot.Writer.to_string [%bin_writer: int Fdeque.t] xs in
+            [%test_result: string] list_bytes ~expect:fdeque_bytes)
+      ;;
+    end
+
     module V1 (X : S_rpc) : sig
       type t = X.t
 
       module Part : sig
-        type t =
-          { parts : X.Intermediate.Part.t Fqueue.t
-          ; bin_size : int option
-          }
+        type t = X.Intermediate.Part.t list
       end
 
       include
@@ -268,37 +319,9 @@ module Stable = struct
       type t = X.t
 
       module Part = struct
-        module Format = struct
-          type t = X.Intermediate.Part.t Fqueue.t [@@deriving bin_io]
-        end
-
         module T = struct
-          type t =
-            { parts : Format.t
-            ; bin_size : int option
-            (** [bin_size] is a cached bin_size that we compute when we produce [t],
-                otherwise we end up calling [bin_size] on the parts twice unnecessarily.
-                It's optional because if [t] is produced by deserializing a sexp, we won't
-                know the bin size, so we have to fall back to the regular size computation
-                in that case. *)
-            }
-
-          let bin_shape_t = Format.bin_shape_t
-
-          let bin_size_t t =
-            match t.bin_size with
-            | None -> Format.bin_size_t t.parts
-            | Some size -> size
-          ;;
-
-          let bin_write_t buf ~pos t = Format.bin_write_t buf ~pos t.parts
-
-          let bin_read_t buf ~pos_ref =
-            let start_pos = !pos_ref in
-            let parts = Format.bin_read_t buf ~pos_ref in
-            let bin_size = !pos_ref - start_pos in
-            { parts; bin_size = Some bin_size }
-          ;;
+          type t = X.Intermediate.Part.t List_pretending_to_be_fdeque.t
+          [@@deriving bin_io]
 
           let __bin_read_t__ (_ : Bigstring.t) ~pos_ref:(_ : int ref) (_ : int) =
             failwith
@@ -318,31 +341,17 @@ module Stable = struct
         let create = X.Intermediate.create
 
         let apply_part inter (part : Part.t) =
-          Fqueue.fold part.parts ~init:inter ~f:X.Intermediate.apply_part
+          List.fold part ~init:inter ~f:X.Intermediate.apply_part
         ;;
       end
 
-      (* Practice shows that 2^18 is not too high, but (as of 2016-08-11) we shouldn't
-         exceed 2^18 due to some limitations in writer.ml. *)
-      let pack_threshold =
-        if Ppx_inline_test_lib.am_running
-        then 25 (* something small enough to test both sides of easily *)
-        else 131_072
-      ;;
-
-      (* 2^17 gives us some room to grow in outer parts *)
-
       let to_parts t =
+        let pack_threshold = !pack_threshold in
         let estimated_header_length = 1 + Bin_prot.Utils.size_header_length in
         (* serialized length of parts in the fqueue (must be exactly correct) *)
         let init = Fqueue.empty, 0 in
-        let part_from_state parts total_bin_size : Intermediate.Part.t =
-          let part_bin_size =
-            (* The serialization format for [Fqueue] is the length encoded as a bin prot
-               int, and then each of the serializations of the individual parts. *)
-            total_bin_size + bin_size_int (Fqueue.length parts)
-          in
-          { parts; bin_size = Some part_bin_size }
+        let part_from_state buffered_parts : Intermediate.Part.t =
+          Fqueue.to_list buffered_parts
         in
         Sequence.unfold_with_and_finish
           (X.to_parts t)
@@ -351,14 +360,13 @@ module Stable = struct
             let new_parts = Fqueue.enqueue buffered_parts xpart in
             let new_len = buffered_len + X.Intermediate.Part.bin_size_t xpart in
             if new_len >= pack_threshold - estimated_header_length
-            then Yield { value = part_from_state new_parts new_len; state = init }
+            then Yield { value = part_from_state new_parts; state = init }
             else Skip { state = new_parts, new_len })
           ~inner_finished:Fn.id
-          ~finishing_step:(fun (buffered_parts, buffered_len) ->
+          ~finishing_step:(fun (buffered_parts, _buffered_len) ->
             if Fqueue.is_empty buffered_parts
             then Done
-            else
-              Yield { value = part_from_state buffered_parts buffered_len; state = init })
+            else Yield { value = part_from_state buffered_parts; state = init })
       ;;
 
       let finalize = X.finalize
@@ -377,16 +385,8 @@ module Stable = struct
         Add_sexp.V1
           (T)
           (struct
-            type t = T.Part.t =
-              { parts : X.Intermediate.Part.t Fqueue.t
-              ; bin_size : int option
-              }
-
-            let sexp_of_t t = [%sexp_of: X.Intermediate.Part.t Fqueue.t] t.parts
-
-            let t_of_sexp sexp =
-              { parts = [%of_sexp: X.Intermediate.Part.t Fqueue.t] sexp; bin_size = None }
-            ;;
+            let sexp_of_t t = [%sexp_of: X.Intermediate.Part.t list] t
+            let t_of_sexp sexp = [%of_sexp: X.Intermediate.Part.t list] sexp
           end)
     end
   end
@@ -2682,3 +2682,9 @@ module Stable = struct
 end
 
 include Stable.Latest
+
+module For_testing = struct
+  module Packed_rpc = struct
+    let pack_threshold = Stable.Packed_rpc.pack_threshold
+  end
+end
