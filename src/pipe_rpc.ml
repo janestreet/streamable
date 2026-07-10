@@ -1,7 +1,6 @@
 open! Core
 open! Async_kernel
 open! Import
-open Deferred.Or_error.Let_syntax
 include Pipe_rpc_intf
 
 (* Implementation-wise, a [Streamable.Pipe_rpc] is just a [Streamable.State_rpc] with a
@@ -31,8 +30,8 @@ module Make (X : S) = struct
 
   let implement' ?on_exception f =
     let f conn query =
-      let%bind response = f conn query in
-      return (State_X.State.to_parts () |> Pipe.of_sequence, response)
+      let%bind.Deferred.Or_error response = f conn query in
+      Deferred.Or_error.return (State_X.State.to_parts () |> Pipe.of_sequence, response)
     in
     M.implement' ?on_exception f
   ;;
@@ -41,16 +40,17 @@ end
 let description = State_rpc.description
 
 let dispatch' rpc conn query =
-  let%bind server_response = State_rpc.dispatch' rpc conn query in
-  Or_error.map server_response ~f:(fun ((), response) -> response) |> return
+  let%bind.Deferred.Or_error server_response = State_rpc.dispatch' rpc conn query in
+  Or_error.map server_response ~f:(fun ((), response, metadata) -> response, metadata)
+  |> Deferred.Or_error.return
 ;;
 
 let dispatch rpc conn query = dispatch' rpc conn query |> Deferred.map ~f:Or_error.join
 
 let implement ?on_exception ?leave_open_on_exception rpc f =
   let f conn query =
-    let%bind response = f conn query in
-    return ((), response)
+    let%bind.Deferred.Or_error response = f conn query in
+    Deferred.Or_error.return ((), response)
   in
   State_rpc.implement ?on_exception ?leave_open_on_exception rpc f
 ;;
