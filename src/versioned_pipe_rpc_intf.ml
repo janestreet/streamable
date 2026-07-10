@@ -9,7 +9,7 @@ module type Caller_converts = sig
   val dispatch_multi
     :  Versioned_rpc.Connection_with_menu.t
     -> query
-    -> response Or_error.t Pipe.Reader.t Deferred.Or_error.t
+    -> (response Or_error.t Pipe.Reader.t * Rpc.Pipe_rpc.Metadata.t) Deferred.Or_error.t
 
   val name : string
 end
@@ -35,7 +35,8 @@ module type Both_convert = sig
   val dispatch_multi
     :  Versioned_rpc.Connection_with_menu.t
     -> caller_query
-    -> caller_response Or_error.t Pipe.Reader.t Deferred.Or_error.t
+    -> (caller_response Or_error.t Pipe.Reader.t * Rpc.Pipe_rpc.Metadata.t)
+         Deferred.Or_error.t
 
   val implement_multi
     :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)

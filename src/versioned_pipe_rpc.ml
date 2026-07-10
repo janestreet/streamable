@@ -18,7 +18,8 @@ module Caller_converts = struct
     type dispatch_fun =
       Rpc.Connection.t
       -> Model.query
-      -> Model.response Or_error.t Pipe.Reader.t Deferred.Or_error.t
+      -> (Model.response Or_error.t Pipe.Reader.t * Rpc.Pipe_rpc.Metadata.t)
+           Deferred.Or_error.t
 
     let registry : dispatch_fun Callers_rpc_version_table.t =
       Callers_rpc_version_table.create ~rpc_name:name
@@ -54,14 +55,15 @@ module Caller_converts = struct
       let version = Version.version
 
       let dispatch conn query =
-        let open Deferred.Or_error.Let_syntax in
         let query = Version.query_of_model query in
-        let%bind response = Pipe_rpc.dispatch rpc conn query in
+        let%bind.Deferred.Or_error response, metadata =
+          Pipe_rpc.dispatch rpc conn query
+        in
         let response =
           Pipe.map response ~f:(fun response ->
             Or_error.try_with (fun () -> Version.model_of_response response))
         in
-        return response
+        Deferred.Or_error.return (response, metadata)
       ;;
 
       let () = Callers_rpc_version_table.add_exn registry ~version dispatch
@@ -132,11 +134,10 @@ module Callee_converts = struct
           -> Model.response Pipe.Reader.t Deferred.Or_error.t)
         =
         Pipe_rpc.implement ?on_exception rpc (fun conn_state query ->
-          let open Deferred.Or_error.Let_syntax in
           let query = Version.model_of_query query in
-          let%bind response = f ~version conn_state query in
+          let%bind.Deferred.Or_error response = f ~version conn_state query in
           let response = Pipe.map response ~f:Version.response_of_model in
-          return response)
+          Deferred.Or_error.return response)
       ;;
 
       let () = Callers_rpc_version_table.add_exn registry ~version { implement }

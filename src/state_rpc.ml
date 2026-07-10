@@ -1,59 +1,7 @@
 open! Core
 open! Async_kernel
 open! Import
-open Deferred.Or_error.Let_syntax
 include State_rpc_intf
-
-module type S_plus = sig
-  include S
-
-  module Underlying_rpc : sig
-    val dispatch
-      :  Rpc.Connection.t
-      -> query
-      -> (state * update Pipe.Reader.t) Deferred.Or_error.t
-
-    val dispatch'
-      :  Rpc.Connection.t
-      -> query
-      -> (state * update Pipe.Reader.t) Or_error.t Deferred.Or_error.t
-
-    val dispatch_with_rpc_result
-      :  Rpc.Connection.t
-      -> query
-      -> ( (state * update Pipe.Reader.t) Or_error.t
-           , Async_rpc_kernel.Rpc_error.t )
-           Deferred.Result.t
-
-    val dispatch_with_rpc_result_and_metadata
-      :  Rpc.Connection.t
-      -> query
-      -> metadata:Rpc_metadata.V2.t
-      -> ( (state * update Pipe.Reader.t) Or_error.t
-           , Async_rpc_kernel.Rpc_error.t )
-           Deferred.Result.t
-
-    val implement
-      :  ?on_exception:Rpc.On_exception.t
-      -> ?leave_open_on_exception:bool
-      -> ('c -> query -> (state * update Pipe.Reader.t) Deferred.Or_error.t)
-      -> 'c Rpc.Implementation.t
-
-    val implement_with_auth
-      :  ?on_exception:Rpc.On_exception.t
-      -> ?leave_open_on_exception:bool
-      -> ('c
-          -> query
-          -> (state * update Pipe.Reader.t) Async_rpc_kernel.Or_not_authorized.t
-               Deferred.t)
-      -> 'c Rpc.Implementation.t
-
-    val description : Rpc.Description.t
-  end
-end
-
-type ('q, 's, 'u) t =
-  (module S_plus with type query = 'q and type state = 's and type update = 'u)
 
 module Part_or_done = struct
   type 'a t =
@@ -209,6 +157,58 @@ module Direct_parts_writer = struct
   end
 end
 
+module type S_plus = sig
+  include S
+
+  module Underlying_rpc : sig
+    val dispatch
+      :  Rpc.Connection.t
+      -> query
+      -> (state * update Pipe.Reader.t * Rpc.State_rpc.Metadata.t) Deferred.Or_error.t
+
+    val dispatch'
+      :  Rpc.Connection.t
+      -> query
+      -> (state * update Pipe.Reader.t * Rpc.State_rpc.Metadata.t) Or_error.t
+           Deferred.Or_error.t
+
+    val dispatch_with_rpc_result
+      :  Rpc.Connection.t
+      -> query
+      -> ( (state * update Pipe.Reader.t * Rpc.State_rpc.Metadata.t) Or_error.t
+           , Async_rpc_kernel.Rpc_error.t )
+           Deferred.Result.t
+
+    val dispatch_with_rpc_result_and_metadata
+      :  Rpc.Connection.t
+      -> query
+      -> metadata:Rpc_metadata.V2.t
+      -> ( (state * update Pipe.Reader.t * Rpc.State_rpc.Metadata.t) Or_error.t
+           , Async_rpc_kernel.Rpc_error.t )
+           Deferred.Result.t
+
+    val implement
+      :  ?on_exception:Rpc.On_exception.t
+      -> ?leave_open_on_exception:bool
+      -> ('c -> query -> (state * update Pipe.Reader.t) Deferred.Or_error.t)
+      -> 'c Rpc.Implementation.t
+
+    val implement_with_auth
+      :  ?on_exception:Rpc.On_exception.t
+      -> ?leave_open_on_exception:bool
+      -> ('c
+          -> query
+          -> (state * update Pipe.Reader.t) Async_rpc_kernel.Or_not_authorized.t
+               Deferred.t)
+      -> 'c Rpc.Implementation.t
+
+    val description : Rpc.Description.t
+  end
+end
+
+type ('q, 's, 'u) t =
+  (module S_plus with type query = 'q and type state = 's and type update = 'u)
+
 module Make (X : S) = struct
   module Underlying_rpc = struct
     type query = X.query [@@deriving bin_io]
@@ -252,7 +252,7 @@ module Make (X : S) = struct
       ~metadata
       =
       let rec loop acc =
-        match%bind Pipe.read pipe_reader |> Deferred.ok with
+        match%bind Pipe.read pipe_reader >>| Fn.id with
         | `Eof ->
           let close_reason = Deferred.peek (Rpc.Pipe_rpc.close_reason metadata) in
           Deferred.Or_error.error_s
@@ -261,9 +261,9 @@ module Make (X : S) = struct
                 (close_reason : Rpc.Pipe_close_reason.t option)]
         | `Ok msg ->
           (match match_ msg with
-           | Error e -> Deferred.return (Error e)
+           | Error e -> return (Error e)
            | Ok (Part_or_done.Part part) -> loop (X.Intermediate.apply_part acc part)
-           | Ok Done -> return (X.finalize acc))
+           | Ok Done -> Deferred.Or_error.return (X.finalize acc))
       in
       loop (X.Intermediate.create ())
     ;;
@@ -302,9 +302,8 @@ module Make (X : S) = struct
         ~leave_open_on_exception:(Option.value leave_open_on_exception ~default:true)
         rpc
         (fun c q ->
-           let open Deferred.Or_error.Let_syntax in
-           let%bind state_pipe, update_pipes = f c q in
-           implement_with_pipes state_pipe update_pipes |> return)
+           let%bind.Deferred.Or_error state_pipe, update_pipes = f c q in
+           implement_with_pipes state_pipe update_pipes |> Deferred.Or_error.return)
     ;;
 
     let implement_with_auth' ?on_exception ?leave_open_on_exception f =
@@ -321,9 +320,8 @@ module Make (X : S) = struct
 
     let implement ?on_exception ?leave_open_on_exception f =
       implement' ?on_exception ?leave_open_on_exception (fun c q ->
-        let open Deferred.Or_error.Let_syntax in
-        let%bind state, updates = f c q in
-        return
+        let%bind.Deferred.Or_error state, updates = f c q in
+        Deferred.Or_error.return
           ( State.to_parts state |> Pipe.of_sequence
           , Pipe.map updates ~f:(fun update -> Update.to_parts update |> Pipe.of_sequence)
           ))
@@ -353,7 +351,7 @@ module Make (X : S) = struct
       match server_response with
       | Error _ as error -> Deferred.Result.return error
       | Ok (pipe_reader, metadata) ->
-        (match%bind.Deferred read_state pipe_reader ~metadata with
+        (match%bind read_state pipe_reader ~metadata with
          | Error _ as error -> Deferred.Result.return error
          | Ok initial_state ->
            let updates =
@@ -375,7 +373,7 @@ module Make (X : S) = struct
                Pipe.close_read pipe_reader;
                return ())
            in
-           Deferred.Result.return (Ok (initial_state, updates)))
+           Deferred.Result.return (Ok (initial_state, updates, metadata)))
     ;;
 
     let dispatch' conn query = dispatch_gen Rpc.Pipe_rpc.dispatch conn query

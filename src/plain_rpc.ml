@@ -1,13 +1,12 @@
 open! Core
 open! Async_kernel
 open! Import
-open Deferred.Or_error.Let_syntax
 include Plain_rpc_intf
 
-(* Implementation-wise, a [Streamable.Plain_rpc] is just a [Streamable.State_rpc] with the
-   pipe unused. *)
+(* Implementation-wise, a [Streamable.Plain_rpc] is just a [Streamable.State_rpc] with no
+   updates (i.e. [update = Nothing.t]). *)
 let plain_impl_to_state f conn query =
-  let%bind response = f conn query in
+  let%bind.Deferred.Or_error response = f conn query in
   let empty = Pipe.create_reader ~close_on_exception:false (fun _ -> Deferred.unit) in
   Deferred.Or_error.return (response, empty)
 ;;
@@ -79,11 +78,11 @@ end
 let description = State_rpc.description
 
 let dispatch' rpc conn query =
-  let%bind server_response = State_rpc.dispatch' rpc conn query in
-  Or_error.map server_response ~f:(fun (response, pipe) ->
+  let%bind.Deferred.Or_error server_response = State_rpc.dispatch' rpc conn query in
+  Or_error.map server_response ~f:(fun (response, pipe, (_ : Rpc.State_rpc.Metadata.t)) ->
     Pipe.close_read pipe;
     response)
-  |> return
+  |> Deferred.Or_error.return
 ;;
 
 let dispatch rpc conn query = dispatch' rpc conn query |> Deferred.map ~f:Or_error.join
@@ -92,7 +91,7 @@ let dispatch_with_rpc_result_and_metadata rpc conn query ~metadata =
   let%bind.Deferred.Result server_response =
     State_rpc.Expert.dispatch_with_rpc_result_and_metadata rpc conn query ~metadata
   in
-  Or_error.map server_response ~f:(fun (response, pipe) ->
+  Or_error.map server_response ~f:(fun (response, pipe, (_ : Rpc.State_rpc.Metadata.t)) ->
     Pipe.close_read pipe;
     response)
   |> Deferred.Result.return

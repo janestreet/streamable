@@ -28,13 +28,13 @@ module type Pipe_rpc = sig
     :  ('q, 'r) t
     -> Rpc.Connection.t
     -> 'q
-    -> 'r Pipe.Reader.t Deferred.Or_error.t
+    -> ('r Pipe.Reader.t * Rpc.Pipe_rpc.Metadata.t) Deferred.Or_error.t
 
   val dispatch'
     :  ('q, 'r) t
     -> Rpc.Connection.t
     -> 'q
-    -> 'r Pipe.Reader.t Or_error.t Deferred.Or_error.t
+    -> ('r Pipe.Reader.t * Rpc.Pipe_rpc.Metadata.t) Or_error.t Deferred.Or_error.t
 
   val implement
     :  ?on_exception:Rpc.On_exception.t (** default: [On_exception.continue] *)

@@ -56,10 +56,10 @@ module Caller_converts = struct
       let version = Version.version
 
       let dispatch' conn query =
-        let open Deferred.Or_error.Let_syntax in
         let query = Version.query_of_model query in
-        let%bind server_response = Plain_rpc.dispatch' rpc conn query in
-        Or_error.map server_response ~f:Version.model_of_response |> return
+        let%bind.Deferred.Or_error server_response = Plain_rpc.dispatch' rpc conn query in
+        Or_error.map server_response ~f:Version.model_of_response
+        |> Deferred.Or_error.return
       ;;
 
       let () = Callers_rpc_version_table.add_exn registry ~version dispatch'
@@ -123,10 +123,9 @@ module Callee_converts = struct
         (f : s -> version:int -> Model.query -> Model.response Deferred.Or_error.t)
         =
         Plain_rpc.implement ?on_exception rpc (fun conn_state query ->
-          let open Deferred.Or_error.Let_syntax in
           let query = Version.model_of_query query in
-          let%bind response = f ~version conn_state query in
-          return (Version.response_of_model response))
+          let%bind.Deferred.Or_error response = f ~version conn_state query in
+          Deferred.Or_error.return (Version.response_of_model response))
       ;;
 
       let () = Callers_rpc_version_table.add_exn registry ~version { implement }

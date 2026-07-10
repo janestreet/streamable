@@ -19,7 +19,8 @@ module Caller_converts = struct
     type dispatch_fun =
       Rpc.Connection.t
       -> Model.query
-      -> (Model.state * Model.update Or_error.t Pipe.Reader.t) Or_error.t
+      -> (Model.state * Model.update Or_error.t Pipe.Reader.t * Rpc.State_rpc.Metadata.t)
+           Or_error.t
            Deferred.Or_error.t
 
     let registry : dispatch_fun Callers_rpc_version_table.t =
@@ -65,17 +66,16 @@ module Caller_converts = struct
       let version = Version.version
 
       let dispatch' conn query =
-        let open Deferred.Or_error.Let_syntax in
         let query = Version.query_of_model query in
-        let%bind server_response = State_rpc.dispatch' rpc conn query in
-        Or_error.map server_response ~f:(fun (state, updates) ->
+        let%bind.Deferred.Or_error server_response = State_rpc.dispatch' rpc conn query in
+        Or_error.map server_response ~f:(fun (state, updates, metadata) ->
           let state = Version.model_of_state state in
           let updates =
             Pipe.map updates ~f:(fun update ->
               Or_error.try_with (fun () -> Version.model_of_update update))
           in
-          state, updates)
-        |> return
+          state, updates, metadata)
+        |> Deferred.Or_error.return
       ;;
 
       let () = Callers_rpc_version_table.add_exn registry ~version dispatch'
@@ -152,12 +152,11 @@ module Callee_converts = struct
           -> (Model.state * Model.update Pipe.Reader.t) Deferred.Or_error.t)
         =
         State_rpc.implement ?on_exception rpc (fun conn_state query ->
-          let open Deferred.Or_error.Let_syntax in
           let query = Version.model_of_query query in
-          let%bind state, updates = f ~version conn_state query in
+          let%bind.Deferred.Or_error state, updates = f ~version conn_state query in
           let state = Version.state_of_model state in
           let updates = Pipe.map updates ~f:Version.update_of_model in
-          return (state, updates))
+          Deferred.Or_error.return (state, updates))
       ;;
 
       let () = Callers_rpc_version_table.add_exn registry ~version { implement }

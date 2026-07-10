@@ -32,19 +32,21 @@ module type State_rpc = sig
     :  ('q, 's, 'u) t
     -> Rpc.Connection.t
     -> 'q
-    -> ('s * 'u Pipe.Reader.t) Deferred.Or_error.t
+    -> ('s * 'u Pipe.Reader.t * Rpc.State_rpc.Metadata.t) Deferred.Or_error.t
 
   val dispatch'
     :  ('q, 's, 'u) t
     -> Rpc.Connection.t
     -> 'q
-    -> ('s * 'u Pipe.Reader.t) Or_error.t Deferred.Or_error.t
+    -> ('s * 'u Pipe.Reader.t * Rpc.State_rpc.Metadata.t) Or_error.t Deferred.Or_error.t
 
   val dispatch_with_rpc_result
     :  ('q, 's, 'u) t
     -> Rpc.Connection.t
     -> 'q
-    -> (('s * 'u Pipe.Reader.t) Or_error.t, Rpc_error.t) Deferred.Result.t
+    -> ( ('s * 'u Pipe.Reader.t * Rpc.State_rpc.Metadata.t) Or_error.t
+         , Rpc_error.t )
+         Deferred.Result.t
 
   module Expert : sig
     (** [dispatch_with_rpc_result_and_metadata] is the same as
@@ -58,7 +60,9 @@ module type State_rpc = sig
       -> Rpc.Connection.t
       -> 'q
       -> metadata:Rpc_metadata.V2.t
-      -> (('s * 'u Pipe.Reader.t) Or_error.t, Rpc_error.t) Deferred.Result.t
+      -> ( ('s * 'u Pipe.Reader.t * Rpc.State_rpc.Metadata.t) Or_error.t
+           , Rpc_error.t )
+           Deferred.Result.t
   end
 
   val implement
@@ -147,7 +151,9 @@ module type State_rpc = sig
     end
 
     module Group : sig
-      type ('state_part, 'update_part) direct_writer := ('state_part, 'update_part) t
+      type ('state_part, 'update_part) direct_parts_writer :=
+        ('state_part, 'update_part) t
+
       type ('state_part, 'update_part) t
 
       val create : ?buffer:Rpc.Pipe_rpc.Direct_stream_writer.Group.Buffer.t -> unit -> _ t
@@ -162,7 +168,7 @@ module type State_rpc = sig
           closed, it is automatically removed from the group. *)
       val add_exn
         :  ('state_part, 'update_part) t
-        -> ('state_part, 'update_part) direct_writer
+        -> ('state_part, 'update_part) direct_parts_writer
         -> unit
 
       (** Remove a writer from a group. Note that writers are automatically removed from
@@ -170,7 +176,7 @@ module type State_rpc = sig
           remove a writer without closing it. *)
       val remove
         :  ('state_part, 'update_part) t
-        -> ('state_part, 'update_part) direct_writer
+        -> ('state_part, 'update_part) direct_parts_writer
         -> unit
 
       (** Write an update part on all direct writers in the group. Contrary to
